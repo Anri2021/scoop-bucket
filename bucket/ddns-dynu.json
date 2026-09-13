@@ -1,13 +1,16 @@
-﻿{
-    "version": "1.0.0",
+{
+    "version": "1.0.1",
     "description": "Dynu DDNS updater with EUI-64 IPv6 support",
     "homepage": "https://github.com/Anri2021/ddns-dynu",
     "license": "MIT",
-    "url": "https://github.com/Anri2021/ddns-dynu/releases/download/v1.0.0/ddns-dynu.ps1",
-    "hash": "c2add8522af1d979ee8a1b14f783913d0bff7422a33355d4bc169e7e98f52ee3",
+    "url": "https://github.com/Anri2021/ddns-dynu/releases/download/v1.0.1/ddns-dynu.ps1",
+    "hash": "d672aac6e3befe304b40f2419d24fc0be32f2b3eb9fd10ca1d9d96fc9b70cadf",
     "bin": [
-		["ddns-dynu.ps1", "ddns-dynu"]
-	],
+        [
+            "ddns-dynu.ps1",
+            "ddns-dynu"
+        ]
+    ],
     "checkver": "github",
     "autoupdate": {
         "url": "https://github.com/Anri2021/ddns-dynu/releases/download/v$version/ddns-dynu.ps1"

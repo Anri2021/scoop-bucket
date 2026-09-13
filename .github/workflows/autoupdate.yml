@@ -1,0 +1,20 @@
+name: Auto-update Scoop Manifests
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 * * * *' # בודק כל שעה האם יצאה גרסה חדשה
+
+jobs:
+  update:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout bucket repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Run Scoop Autoupdate
+        uses: ScoopInstaller/UpdateAction@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}

@@ -4,7 +4,7 @@
     "homepage": "https://github.com/Anri2021/ipv6-advertiser",
     "license": "MIT",
     "url": "https://github.com/Anri2021/ipv6-advertiser/releases/download/v1.0.0/ipv6-advertiser.py",
-    "hash": "",
+    "hash": "21C4B5A37262B97A51406FD009EE14F67E0690958D5006BC122A36E0C13D4536",
     "bin": [
         ["ipv6-advertiser.py", "ipv6-advertiser"]
     ],

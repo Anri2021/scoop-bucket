@@ -14,7 +14,21 @@ jobs:
         with:
           token: ${{ secrets.GH_PAT }}
 
-      - name: Run Scoop Autoupdate
-        uses: ScoopInstaller/update-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+      - name: Run Official Scoop Checkver & Update
+        shell: pwsh
+        run: |
+          # 1. התקנת ליבת Scoop בסביבת ה-Runner
+          Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
+
+          # 2. הרצת checkver המובנה של Scoop עם דגל עדכון (-u) עבור כל קובצי ה-JSON
+          $checkver = "$env:USERPROFILE\scoop\apps\scoop\current\bin\checkver.ps1"
+          & $checkver -u *
+
+          # 3. שמירת השינויים וביצוע Push אוטומטי אם חושב Hash/גרסה חדשה
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          if (-not (git diff --staged --quiet)) {
+              git commit -m "Auto-update manifests via official checkver"
+              git push
+          }

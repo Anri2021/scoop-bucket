@@ -22,7 +22,7 @@ jobs:
 
           # 2. הרצת checkver המובנה של Scoop עם דגל עדכון (-u) עבור כל קובצי ה-JSON
           $checkver = "$env:USERPROFILE\scoop\apps\scoop\current\bin\checkver.ps1"
-          & $checkver -u *
+          & $checkver -Dir . * -u
 
           # 3. שמירת השינויים וביצוע Push אוטומטי אם חושב Hash/גרסה חדשה
           git config --global user.name "github-actions[bot]"

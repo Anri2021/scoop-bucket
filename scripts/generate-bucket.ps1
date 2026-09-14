@@ -66,11 +66,11 @@ foreach ($recipe in $recipes) {
         $version = $pypiMeta.info.version
         Write-Host "Latest PyPI version for $name is $version"
 
-        # בדיקת קובץ Wheel מוכן ל-Windows x64
-        $wheel = $pypiMeta.urls | Where-Object {
-            $_.packagetype -eq "bdist_wheel" -and
-            $_.filename -match "(win_amd64|any)"
-        } | Select-Object -First 1
+        # בדיקת קובץ Wheel - עדיפות ראשונה ל-any (Pure Python אוניברסלי), עדיפות שנייה ל-win_amd64
+        $wheel = ($pypiMeta.urls | Where-Object { $_.packagetype -eq "bdist_wheel" -and $_.filename -match "any\.whl$" } | Select-Object -First 1)
+        if (-not $wheel) {
+            $wheel = ($pypiMeta.urls | Where-Object { $_.packagetype -eq "bdist_wheel" -and $_.filename -match "win_amd64\.whl$" } | Select-Object -First 1)
+        }
 
         if ($wheel) {
             $upstreamAssetFound = $true
@@ -174,6 +174,40 @@ foreach ($recipe in $recipes) {
         Remove-Item -Recurse -Force $workDir
     }
 
+    # מצב קימפול מקומי או היברידי - הכנת הוראות בנייה ישירות לתוך המניפסט של Scoop
+    elseif ($mode -eq "local" -or $mode -eq "hybrid") {
+        Write-Host "Generating local build instructions for $name..."
+        $downloadUrl = "https://github.com/$($recipe.repo)/archive/refs/tags/v$version.zip"
+        $sha256 = "skip"
+
+        $localPreInstall = @()
+        $injectedDepends = @()
+
+        # זיהוי כלי הבנייה הנדרשים והזרקתם לפי סוג הפרויקט
+        if ($recipe.build_type -eq "node" -or $recipe.build_type -eq "bun") {
+            $injectedDepends += "bun"
+            $localPreInstall += "bun install --ignore-scripts --no-progress"
+            $localPreInstall += "bun run build"
+        }
+        elseif ($recipe.build_type -eq "rust") {
+            $injectedDepends += "rust"
+            $localPreInstall += "cargo build --release"
+        }
+        elseif ($recipe.build_type -eq "go") {
+            $injectedDepends += "go"
+            $localPreInstall += "go build -ldflags=\"-s -w\""
+        }
+        elseif ($recipe.build_type -eq "c" -or $recipe.build_type -eq "make") {
+            $injectedDepends += "w64devkit"
+            $localPreInstall += "make -j$env:NUMBER_OF_PROCESSORS"
+        }
+
+        # הוספת פקודות קימפול מותאמות אישית אם הוגדרו ב-recipe
+        if ($recipe.custom_build) {
+            $localPreInstall += $recipe.custom_build
+        }
+    }
+
     # -------------------------------------------------------------
     # 3. יצירת/עדכון קובץ המניפסט הסופי בתיקיית bucket/
     # -------------------------------------------------------------
@@ -184,8 +218,17 @@ foreach ($recipe in $recipes) {
         "license"     = $recipe.license
     }
 
-    if ($recipe.depends) {
-        $manifestObj["depends"] = $recipe.depends
+    # שילוב תלויות החבילה המקוריות עם כלי הבנייה שהוזרקו
+    $finalDepends = @()
+    if ($recipe.depends) { $finalDepends += $recipe.depends }
+    if ($injectedDepends) { $finalDepends += $injectedDepends }
+    if ($finalDepends.Count -gt 0) {
+        $manifestObj["depends"] = if ($finalDepends.Count -eq 1) { $finalDepends[0] } else { $finalDepends | Select-Object -Unique }
+    }
+
+    # הזרקת סקריפט הבנייה המקומי ישירות לשדה pre_install במניפסט
+    if ($localPreInstall -and $localPreInstall.Count -gt 0) {
+        $manifestObj["pre_install"] = $localPreInstall
     }
 
     $manifestObj["url"] = $downloadUrl

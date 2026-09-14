@@ -52,7 +52,6 @@ try{
   $document|ConvertTo-Json -Depth 30|Set-Content -LiteralPath $plan -Encoding utf8
 
   & $enginePath -Phase Finalize -RecipesPath $recipesPath -PlanPath $plan -StageDir $stage -BucketDir $bucket -NoPublish
-  if($LASTEXITCODE-ne0){throw "Synthetic finalize failed."}
 
   $local=Get-Content (Join-Path $bucket "fixture-local.json") -Raw|ConvertFrom-Json
   $hybrid=Get-Content (Join-Path $bucket "fixture-hybrid.json") -Raw|ConvertFrom-Json

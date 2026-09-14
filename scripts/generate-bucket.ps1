@@ -152,7 +152,7 @@ foreach ($recipe in $recipes) {
         if (-not $myRepo) { $myRepo = "Anri2021/scoop-bucket" }
 
         $releaseTag = "$name-v$version"
-        $zipName    = "$name-v$version-windows-x64.zip"
+        $zipName    = "$name-v$version-windows-x64.7z"
         $downloadUrl = "https://github.com/$myRepo/releases/download/$releaseTag/$zipName"
 
         $releaseExists = gh release view $releaseTag --repo $myRepo 2>$null
@@ -219,17 +219,21 @@ foreach ($recipe in $recipes) {
             Copy-Item "$workDir\out\*" -Destination $distDir
         }
 
-        # העתקה אוטומטית של קובצי קונפיגורציה (conf, json, ini)
+        # העתקה אוטומטית של קובצי קונפיגורציה
         Get-ChildItem -Path $srcRoot -Include "*.conf", "*.ini", "config.json" -Recurse | Copy-Item -Destination $distDir -Force
 
-        # בדיקת ביטחון למניעת קריסה אם התיקייה ריקה
+        # ניקוי קובצי סרק מיותרים (sourcemaps, בדיקות וטיפוסים) להורדת הנפח
+        Get-ChildItem -Path $distDir -Include "*.map", "*.d.ts", "*.md", "test", "tests" -Recurse | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+
+        # בדיקת ביטחון לווידוא קיום קבצים
         $distFiles = Get-ChildItem -Path $distDir
         if (-not $distFiles) {
             throw "Build failed: No output binaries or scripts found in $distDir for $name."
         }
 
+        # אריזה יעילה ומהירה ב-7z במקום ZIP פשוט
         $packagedZip = Join-Path $workDir $zipName
-        Compress-Archive -Path "$distDir\*" -DestinationPath $packagedZip -Force
+        7z a -t7z -mx=9 -ms=on "$packagedZip" "$distDir\*" | Out-Null
         $sha256 = (Get-FileHash -Path $packagedZip -Algorithm SHA256).Hash.ToLower()
 
         # העלאת שחרור חדש ל-GitHub Releases

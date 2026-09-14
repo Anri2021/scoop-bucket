@@ -427,7 +427,7 @@ function Get-LocalCommands {
     "powershell"{}
     default{throw "Local/hybrid recipe '$name' requires build_type or local_commands."}
   }
-  if($bin){$commands.Add(('if (-not (Test-Path -LiteralPath "$dir\{0}")) { throw "Expected output {0} was not produced." }' -f $bin))}
+  if($bin){$commands.Add(('if (-not (Test-Path -LiteralPath "$dir\{0}")) {{ throw "Expected output {0} was not produced." }}' -f $bin))}
   return @($commands)
 }
 

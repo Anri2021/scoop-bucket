@@ -474,7 +474,7 @@ function Invoke-FinalizePhase {
     if($extractDir){$download.extract_dir=$extractDir}
     $manifest=[ordered]@{version=$plan.version;description=[string](Get-Prop $plan.recipe "description");homepage=[string](Get-Prop $plan.recipe "homepage");license=[string](Get-Prop $plan.recipe "license")}
     $architectures=@($plan.architectures)
-    if($architectures.Count-eq1-and$architectures[0]-eq"64bit"){$manifest.url=$download.url;$manifest.hash=$download.hash;if($download.extract_dir){$manifest.extract_dir=$download.extract_dir}}
+    if($architectures.Count-eq1-and$architectures[0]-eq"64bit"){$manifest.url=$download.url;$manifest.hash=$download.hash;if($extractDir){$manifest.extract_dir=$extractDir}}
     else{$manifest.architecture=[ordered]@{};foreach($arch in $architectures){$manifest.architecture[$arch]=$download}}
     $bin=Get-Prop $plan.recipe "bin";if($bin){$manifest.bin=$bin}
     $depends=Get-ToolDepends $plan;if($depends.Count){$manifest.depends=if($depends.Count-eq1){$depends[0]}else{$depends}}

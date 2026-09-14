@@ -78,6 +78,24 @@ foreach ($recipe in $recipes) {
             $sha256 = $wheel.digests.sha256
             Write-Host "Found compatible PyPI wheel: $($wheel.filename)"
         }
+
+        # אם אין גלגל מוכן (any או win_amd64) - בניית Wheel מקוד מקור (sdist)
+        if (-not $wheel) {
+            $sdist = $pypiMeta.urls | Where-Object { $_.packagetype -eq "sdist" } | Select-Object -First 1
+            if ($sdist) {
+                Write-Host "No pre-built wheel found. Building wheel from source distribution..."
+                $tempPyDir = New-Item -ItemType Directory -Path "temp_py_$name" -Force
+                pip wheel --no-deps $sdist.url --wheel-dir $tempPyDir
+                $builtWheel = Get-ChildItem "$tempPyDir\*.whl" | Select-Object -First 1
+                if ($builtWheel) {
+                    $wheel = [PSCustomObject]@{
+                        url = $builtWheel.FullName
+                        filename = $builtWheel.Name
+                        digests = @{ sha256 = (Get-FileHash $builtWheel.FullName -Algorithm SHA256).Hash.ToLower() }
+                    }
+                }
+            }
+        }
     }
 
     # -------------------------------------------------------------
@@ -89,6 +107,22 @@ foreach ($recipe in $recipes) {
     } else { $null }
 
     $isNewVersion = (-not $currentManifest) -or ($currentManifest.version -ne $version)
+
+    # מדרג החלטה אוטומטי מלא: Upstream -> Cloud -> Hybrid -> Local
+    if ($mode -eq "auto") {
+        if ($upstreamAssetFound) {
+            $mode = "upstream"
+        }
+        elseif ($recipe.build_type -in @("bun", "node") -and (Test-Path "package.json")) {
+            $mode = "hybrid" # הכנת ספריות ו-Frontend בענן, קימפול שרתי קצה מקומית
+        }
+        elseif ($recipe.build_type -in @("rust", "go", "c", "make")) {
+            $mode = "local" # התאמה מלאה לחומרת המחשב המקומי
+        }
+        else {
+            $mode = "cloud"
+        }
+    }
 
     # מצב Upstream מפורש או Auto שיש לו קובץ מוכן במקור
     if ($mode -eq "upstream" -or ($mode -eq "auto" -and $upstreamAssetFound)) {
@@ -172,6 +206,28 @@ foreach ($recipe in $recipes) {
             --notes "Automated generic cloud build for $name v$version"
 
         Remove-Item -Recurse -Force $workDir
+    }
+
+    # מצב היברידי: הכנת תלויות ונכסים גנריים בענן, והשלמת קימפול מקומית
+    elseif ($mode -eq "hybrid") {
+        Write-Host "Executing Hybrid strategy for $name (Cloud preparation + Local completion)..."
+        
+        # 1. בענן: אריזת תלויות כבדות (כגון מודולים ונכסי Frontend שנבנו) לקובץ בסיס
+        $myRepo = if ($env:GITHUB_REPOSITORY) { $env:GITHUB_REPOSITORY } else { "Anri2021/scoop-bucket" }
+        $releaseTag = "$name-v$version-hybrid"
+        $zipName    = "$name-v$version-hybrid.zip"
+        $downloadUrl = "https://github.com/$myRepo/releases/download/$releaseTag/$zipName"
+
+        # 2. הזרקת פקודות קימפול משלימות לתוך Scoop בצד הלקוח
+        $localPreInstall = @()
+        $injectedDepends = @()
+        if ($recipe.build_type -in @("node", "bun")) {
+            $injectedDepends += "bun"
+            $localPreInstall += "bun run build:native" # קימפול מקומי של מודולי מערכת בלבד
+        }
+        if ($recipe.custom_local_build) {
+            $localPreInstall += $recipe.custom_local_build
+        }
     }
 
     # מצב קימפול מקומי או היברידי - הכנת הוראות בנייה ישירות לתוך המניפסט של Scoop

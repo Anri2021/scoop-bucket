@@ -50,8 +50,8 @@ foreach ($recipe in $recipes) {
 
         # בדיקת נכסים בינאריים מוכנים ל-Windows ב-Upstream
         $winAsset = $release.assets | Where-Object {
-            $_.name -match "(\.zip|\.exe|\.msi)$" -and
-            $_.name -match "(win|windows|x86_64|x64|amd64)"
+            ($_.name -match "\.(exe|msi)$") -or
+            ($_.name -match "\.zip$" -and ($_.name -match "(win|windows|x86_64|x64|amd64)" -or $release.assets.Count -eq 1))
         } | Select-Object -First 1
 
         if ($winAsset) {

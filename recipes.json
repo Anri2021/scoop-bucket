@@ -7,7 +7,7 @@
       "homepage": "https://github.com/tale/headplane",
       "license": "AGPL-3.0-only",
       "repo": "tale/headplane",
-      "mode": "local",
+      "mode": "cloud",
       "build_type": "bun",
       "bin": "headplane.cmd"
     },

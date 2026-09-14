@@ -10,7 +10,7 @@
         "tar -xf \"$dir\\headplane.dl\" -C \"$dir\" --strip-components=1",
         "Remove-Item \"$dir\\headplane.dl\" -Force -ErrorAction SilentlyContinue",
         "Push-Location \"$dir\"",
-        "bun install --no-audit --no-fund",
+        "bun install --ignore-scripts --no-audit --no-fund",
         "bun run build",
         "@('@echo off', 'node \"%~dp0build\\server\\index.js\" %*') | Set-Content -Path \"$dir\\headplane.cmd\" -Encoding ASCII",
         "Pop-Location"

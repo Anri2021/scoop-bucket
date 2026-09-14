@@ -12,7 +12,8 @@ param(
   [string]$BuildDir = "$PSScriptRoot/../dist",
   [ValidateRange(1, 32)][int]$ThrottleLimit = [Math]::Min([Environment]::ProcessorCount, 8),
   [switch]$ForceRebuild,
-  [switch]$ValidateOnly
+  [switch]$ValidateOnly,
+  [switch]$NoPublish
 )
 
 Set-StrictMode -Version Latest
@@ -71,6 +72,7 @@ foreach ($tier in $tiers) {
     $targetRepo = $using:targetRepository
     $force = $using:ForceRebuild
     $validate = $using:ValidateOnly
+    $noPublish = $using:NoPublish
 
     function Prop {
       param([object]$Object, [string]$Name, $Default = $null)
@@ -198,6 +200,8 @@ foreach ($tier in $tiers) {
           if ($_.Exception.Response.StatusCode.value__ -ne 404) { throw }
         }
 
+        if ($noPublish) { $published = $null }
+
         if (-not $published) {
           Remove-Item -LiteralPath $workDir -Recurse -Force -ErrorAction SilentlyContinue
           $sourceDir = Join-Path $workDir "source"
@@ -269,11 +273,15 @@ foreach ($tier in $tiers) {
           $archive = Join-Path $workDir $archiveName
           Invoke-Checked "7z" @("a","-t7z","-mx=9","-m0=lzma2","-ms=on","-mqs=on","-mmt=on",$archive,(Join-Path $packageDir "*"))
           $assetHash = Get-Sha256 $archive
-          $existingRelease = $false
-          try { $null = Invoke-Checked "gh" @("release","view",$tag,"--repo",$targetRepo); $existingRelease = $true } catch {}
-          if ($existingRelease) { Invoke-Checked "gh" @("release","upload",$tag,$archive,"--repo",$targetRepo,"--clobber") }
-          else { Invoke-Checked "gh" @("release","create",$tag,$archive,"--repo",$targetRepo,"--title","$name $version","--notes","Automated Meta-Bucket build.") }
-          $urls.Add("https://github.com/$targetRepo/releases/download/$tag/$archiveName")
+          if ($noPublish) {
+            $urls.Add($archive)
+          } else {
+            $existingRelease = $false
+            try { $null = Invoke-Checked "gh" @("release","view",$tag,"--repo",$targetRepo); $existingRelease = $true } catch {}
+            if ($existingRelease) { Invoke-Checked "gh" @("release","upload",$tag,$archive,"--repo",$targetRepo,"--clobber") }
+            else { Invoke-Checked "gh" @("release","create",$tag,$archive,"--repo",$targetRepo,"--title","$name $version","--notes","Automated Meta-Bucket build.") }
+            $urls.Add("https://github.com/$targetRepo/releases/download/$tag/$archiveName")
+          }
           $hashes.Add($assetHash)
         } else {
           $urls.Add([string]$published.browser_download_url)

@@ -52,9 +52,9 @@ foreach ($recipe in $recipes) {
         $version = $release.tag_name.TrimStart('v')
         Write-Host "Latest upstream release for $name is v$version"
 
-        # בדיקת נכסים בינאריים מוכנים ל-Windows ב-Upstream
+        # בדיקת נכסים בינאריים או סקריפטים מוכנים ל-Windows ב-Upstream
         $winAsset = $release.assets | Where-Object {
-            ($_.name -match "\.(exe|msi)$") -or
+            ($_.name -match "\.(exe|msi|ps1)$") -or
             ($_.name -match "\.zip$" -and ($_.name -match "(win|windows|x86_64|x64|amd64)" -or $release.assets.Count -eq 1))
         } | Select-Object -First 1
 
@@ -136,6 +136,14 @@ foreach ($recipe in $recipes) {
         }
         $downloadUrl = $upstreamDownloadUrl
         Write-Host "Using upstream pass-through for $name"
+
+        # חישוב Hash מקובץ ה-Upstream (מונע כתיבת "skip" במניפסט)
+        if (-not $sha256) {
+            $tempAsset = Join-Path $env:TEMP ([System.IO.Path]::GetFileName($downloadUrl))
+            Invoke-WebRequest -Uri $downloadUrl -OutFile $tempAsset
+            $sha256 = (Get-FileHash -Path $tempAsset -Algorithm SHA256).Hash.ToLower()
+            Remove-Item -Force $tempAsset
+        }
     }
 
     # מצב קימפול בענן (Cloud Build) עבור פרויקטים ללא קבצים בינאריים מוכנים
@@ -150,11 +158,14 @@ foreach ($recipe in $recipes) {
         $releaseExists = gh release view $releaseTag --repo $myRepo 2>$null
 
         if ($releaseExists -and -not $isNewVersion) {
-            Write-Host "Release $releaseTag already exists in $myRepo. Skipping cloud compilation."
-            continue
+            Write-Host "Release $releaseTag already exists in $myRepo. Syncing asset hash..."
+            $tempCheck = Join-Path $env:TEMP "$zipName"
+            gh release download $releaseTag --repo $myRepo -p $zipName -O $tempCheck --clobber
+            $sha256 = (Get-FileHash -Path $tempCheck -Algorithm SHA256).Hash.ToLower()
+            Remove-Item -Force $tempCheck
         }
-
-        Write-Host "Starting Cloud Build for $name v$version..."
+        else {
+            Write-Host "Starting Cloud Build for $name v$version..."
         $workDir = New-Item -ItemType Directory -Path "build_temp_$name" -Force
 
         # הורדת קוד המקור
@@ -260,8 +271,8 @@ foreach ($recipe in $recipes) {
         }
     }
 
-    # מצב קימפול מקומי או היברידי - הכנת הוראות בנייה ישירות לתוך המניפסט של Scoop
-    elseif ($mode -eq "local" -or $mode -eq "hybrid") {
+    # מצב קימפול מקומי - הכנת הוראות בנייה ישירות לתוך המניפסט של Scoop
+    elseif ($mode -eq "local") {
         Write-Host "Generating local build instructions for $name..."
         $downloadUrl = "https://github.com/$($recipe.repo)/archive/refs/tags/v$version.zip"
         # הורדה זמנית של קובץ המקור לחישוב Hash אמיתי (Scoop אינו תומך במחרוזת "skip")

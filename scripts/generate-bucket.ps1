@@ -155,17 +155,20 @@ foreach ($recipe in $recipes) {
         $zipName    = "$name-v$version-windows-x64.7z"
         $downloadUrl = "https://github.com/$myRepo/releases/download/$releaseTag/$zipName"
 
-        $releaseExists = gh release view $releaseTag --repo $myRepo 2>$null
+        # בדיקה מדויקת האם קובץ ה-7z הספציפי כבר קיים בתוך ה-Release
+        $releaseJson = gh release view $releaseTag --repo $myRepo --json assets 2>$null | ConvertFrom-Json
+        $assetExists = $releaseJson -and ($releaseJson.assets | Where-Object { $_.name -eq $zipName })
 
-        if ($releaseExists -and -not $isNewVersion) {
-            Write-Host "Release $releaseTag already exists in $myRepo. Syncing asset hash..."
+        if ($assetExists -and -not $isNewVersion) {
+            Write-Host "Asset $zipName already exists in $releaseTag. Syncing asset hash..."
             $tempCheck = Join-Path $env:TEMP "$zipName"
             gh release download $releaseTag --repo $myRepo -p $zipName -O $tempCheck --clobber
             $sha256 = (Get-FileHash -Path $tempCheck -Algorithm SHA256).Hash.ToLower()
             Remove-Item -Force $tempCheck
         }
         else {
-            Write-Host "Starting Cloud Build for $name v$version..."
+            Write-Host "Starting Cloud Build for $name v$version (packaging into $zipName)..."
+        
         $workDir = New-Item -ItemType Directory -Path "build_temp_$name" -Force
 
         # הורדת קוד המקור

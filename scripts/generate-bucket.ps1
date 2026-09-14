@@ -31,12 +31,13 @@ foreach ($recipe in $recipes) {
     Write-Host "Processing: $name (Mode: $mode, Source: $sourceType)"
     Write-Host "==============================="
 
-    $version      = $null
-    $downloadUrl  = $null
-    $sha256       = $null
+    $version            = $null
+    $downloadUrl        = $null
+    $sha256             = $null
     $upstreamAssetFound = $false
+
     # איפוס משתני מצב בכל איטרציה למניעת זליגת הגדרות בין חבילות
-    $persistedFiles = @()
+    $persistedFiles  = @()
     $localPreInstall = @()
     $injectedDepends = @()
     $distDir         = $null
@@ -116,16 +117,21 @@ foreach ($recipe in $recipes) {
 
     $isNewVersion = (-not $currentManifest) -or ($currentManifest.version -ne $version)
 
+    # שימור הגדרות persist קיימות כדי למנוע איבוד נתונים בדילוג על גרסה
+    if ($currentManifest -and $currentManifest.persist) {
+        $persistedFiles = @($currentManifest.persist)
+    }
+
     # מדרג החלטה אוטומטי מלא: Upstream -> Cloud -> Hybrid -> Local
     if ($mode -eq "auto") {
         if ($upstreamAssetFound) {
             $mode = "upstream"
         }
         elseif ($recipe.build_type -in @("bun", "node") -and (Test-Path "package.json")) {
-            $mode = "hybrid" # הכנת ספריות ו-Frontend בענן, קימפול שרתי קצה מקומית
+            $mode = "hybrid"
         }
         elseif ($recipe.build_type -in @("rust", "go", "c", "make")) {
-            $mode = "local" # התאמה מלאה לחומרת המחשב המקומי
+            $mode = "local"
         }
         else {
             $mode = "cloud"
@@ -141,41 +147,38 @@ foreach ($recipe in $recipes) {
         $downloadUrl = $upstreamDownloadUrl
         Write-Host "Using upstream pass-through for $name"
 
-        # חישוב Hash מקובץ ה-Upstream (מונע כתיבת "skip" במניפסט)
-        if (-not $sha256) {
-            $tempAsset = Join-Path $env:TEMP ([System.IO.Path]::GetFileName($downloadUrl))
-            Invoke-WebRequest -Uri $downloadUrl -OutFile $tempAsset
-            $sha256 = (Get-FileHash -Path $tempAsset -Algorithm SHA256).Hash.ToLower()
-            Remove-Item -Force $tempAsset
-        }
-        # אם מדובר בכלי בנייה (Tier 0) - חילוץ וטעינה מיידית ל-PATH של הריצה
-    if ($recipe.tier -eq 0) {
-        Write-Host "Bootstrapping toolchain component: $name to PATH..."
-        $toolsDir = Join-Path $env:TEMP "toolchain\$name"
-        New-Item -ItemType Directory -Path $toolsDir -Force | Out-Null
+        # הורדה אחת בלבד לצורך חישוב SHA256 וטעינת רכיבי Tier 0
+        $tempAsset = Join-Path $env:TEMP ([System.IO.Path]::GetFileName($downloadUrl))
+        Invoke-WebRequest -Uri $downloadUrl -OutFile $tempAsset
+        $sha256 = (Get-FileHash -Path $tempAsset -Algorithm SHA256).Hash.ToLower()
 
-      $toolFile = Join-Path $env:TEMP ([System.IO.Path]::GetFileName($downloadUrl))
-      Invoke-WebRequest -Uri $downloadUrl -OutFile $toolFile
-      if ($toolFile -match '\.zip$') {
-          Expand-Archive -Path $toolFile -DestinationPath $toolsDir -Force
-          Remove-Item -Force $toolFile
-      } elseif ($toolFile -match '\.7z$') {
-          7z x -y "-o$toolsDir" $toolFile | Out-Null
-          Remove-Item -Force $toolFile
-      } else {
-          Move-Item -Path $toolFile -Destination $toolsDir -Force
-      }
+        # אם מדובר בכלי בנייה (Tier 0) - חילוץ וטעינה מיידית ל-PATH של ה-Runner
+        if ($recipe.tier -eq 0) {
+            Write-Host "Bootstrapping toolchain component: $name to PATH..."
+            $toolsDir = Join-Path $env:TEMP "toolchain\$name"
+            New-Item -ItemType Directory -Path $toolsDir -Force | Out-Null
 
-        # איתור תיקיית הבינארי והוספה ל-PATH הנוכחי ול-GitHub Actions PATH
-        $binDir = (Get-ChildItem -Path $toolsDir -Filter $recipe.bin -Recurse | Select-Object -First 1).DirectoryName
-        if ($binDir) {
-            $env:PATH = "$binDir;$env:PATH"
-            if ($env:GITHUB_PATH) {
-                Add-Content -Path $env:GITHUB_PATH -Value $binDir
+            if ($tempAsset -match '\.zip$') {
+                Expand-Archive -Path $tempAsset -DestinationPath $toolsDir -Force
+            } elseif ($tempAsset -match '\.7z$') {
+                7z x -y "-o$toolsDir" $tempAsset | Out-Null
+            } else {
+                Copy-Item -Path $tempAsset -Destination $toolsDir -Force
             }
-            Write-Host "Successfully loaded $name into environment PATH ($binDir)"
+
+            # איתור תיקיית קובץ ההרצה והזרקתה לסביבת העבודה ול-GitHub Actions
+            $binItem = Get-ChildItem -Path $toolsDir -Filter $recipe.bin -Recurse | Select-Object -First 1
+            if ($binItem) {
+                $binDir = $binItem.DirectoryName
+                $env:PATH = "$binDir;$env:PATH"
+                if ($env:GITHUB_PATH) {
+                    Add-Content -Path $env:GITHUB_PATH -Value $binDir
+                }
+                Write-Host "Successfully loaded $name into environment PATH ($binDir)"
+            }
         }
-    }
+
+        Remove-Item -Force $tempAsset
     }
 
     # מצב קימפול בענן (Cloud Build) עבור פרויקטים ללא קבצים בינאריים מוכנים
@@ -187,7 +190,7 @@ foreach ($recipe in $recipes) {
         $zipName    = "$name-v$version-windows-x64.7z"
         $downloadUrl = "https://github.com/$myRepo/releases/download/$releaseTag/$zipName"
 
-        # בדיקה מדויקת האם קובץ ה-7z הספציפי כבר קיים בתוך ה-Release
+        # בדיקה האם קובץ ה-7z הספציפי כבר קיים בתוך ה-Release
         $releaseJson = gh release view $releaseTag --repo $myRepo --json assets 2>$null | ConvertFrom-Json
         $assetExists = $releaseJson -and ($releaseJson.assets | Where-Object { $_.name -eq $zipName })
 
@@ -200,93 +203,91 @@ foreach ($recipe in $recipes) {
         }
         else {
             Write-Host "Starting Cloud Build for $name v$version (packaging into $zipName)..."
-        
-        $workDir = New-Item -ItemType Directory -Path "build_temp_$name" -Force
+            $workDir = New-Item -ItemType Directory -Path "build_temp_$name" -Force
 
-        # הורדת קוד המקור
-        $sourceZip = Join-Path $workDir "source.zip"
-        Invoke-WebRequest -Uri "https://github.com/$($recipe.repo)/archive/refs/tags/v$version.zip" -OutFile $sourceZip
-        Expand-Archive -Path $sourceZip -DestinationPath "$workDir\src"
-        $srcRoot = (Get-ChildItem -Directory "$workDir\src" | Select-Object -First 1).FullName
+            # הורדת קוד המקור
+            $sourceZip = Join-Path $workDir "source.zip"
+            Invoke-WebRequest -Uri "https://github.com/$($recipe.repo)/archive/refs/tags/v$version.zip" -OutFile $sourceZip
+            Expand-Archive -Path $sourceZip -DestinationPath "$workDir\src"
+            $srcRoot = (Get-ChildItem -Directory "$workDir\src" | Select-Object -First 1).FullName
 
-        Push-Location $srcRoot
+            Push-Location $srcRoot
 
-        # זיהוי חתימות פרויקט ובנייה בענן
-        if (Test-Path "package.json") {
-            Write-Host "Detected Bun / Node.js project. Building..."
-            bun install --ignore-scripts --no-progress
-            bun run build
-            bun install --production --ignore-scripts --no-progress
-        }
-        elseif (Test-Path "Cargo.toml") {
-            Write-Host "Detected Rust project. Building..."
-            cargo build --release
-        }
-        elseif (Test-Path "go.mod") {
-            Write-Host "Detected Go project. Building..."
-            go build -ldflags="-s -w" -o "$workDir\out\"
-        }
-        elseif (Test-Path "*.py") {
-            Write-Host "Detected Python project. Compiling to standalone EXE with PyInstaller..."
-            pip install --quiet pyinstaller
-            $pyEntry = (Get-ChildItem "*.py" | Select-Object -First 1).Name
-            pyinstaller --onefile --clean $pyEntry --distpath "$workDir\out"
-        }
-        elseif (Test-Path "*.ps1") {
-            Write-Host "Detected standalone PowerShell utility. Copying scripts..."
-            Copy-Item "*.ps1" -Destination "$workDir\out"
-        }
+            # זיהוי חתימות פרויקט ובנייה בענן
+            if (Test-Path "package.json") {
+                Write-Host "Detected Bun / Node.js project. Building..."
+                bun install --ignore-scripts --no-progress
+                bun run build
+                bun install --production --ignore-scripts --no-progress
+            }
+            elseif (Test-Path "Cargo.toml") {
+                Write-Host "Detected Rust project. Building..."
+                cargo build --release
+            }
+            elseif (Test-Path "go.mod") {
+                Write-Host "Detected Go project. Building..."
+                go build -ldflags="-s -w" -o "$workDir\out\"
+            }
+            elseif (Test-Path "*.py") {
+                Write-Host "Detected Python project. Compiling to standalone EXE with PyInstaller..."
+                pip install --quiet pyinstaller
+                $pyEntry = (Get-ChildItem "*.py" | Select-Object -First 1).Name
+                pyinstaller --onefile --clean $pyEntry --distpath "$workDir\out"
+            }
+            elseif (Test-Path "*.ps1") {
+                Write-Host "Detected standalone PowerShell utility. Copying scripts..."
+                Copy-Item "*.ps1" -Destination "$workDir\out"
+            }
 
-        Pop-Location
+            Pop-Location
 
-        # אריזת התוצר הבינארי
-        $distDir = New-Item -ItemType Directory -Path "$workDir\dist" -Force
-        if ((Test-Path "$srcRoot\build") -and (Test-Path "$srcRoot\package.json")) {
-            Copy-Item -Recurse "$srcRoot\build" "$distDir\build"
-            Copy-Item -Recurse "$srcRoot\node_modules" "$distDir\node_modules"
-            Copy-Item "$srcRoot\package.json" "$distDir\package.json"
-            @('@echo off', 'node "%~dp0build\server\index.js" %*') | Set-Content -Path "$distDir\$($recipe.bin)" -Encoding ASCII
-        }
-        elseif (Test-Path "$srcRoot\target\release") {
-            Get-ChildItem "$srcRoot\target\release\*.exe" | Copy-Item -Destination $distDir
-        }
-        if (Test-Path "$workDir\out") {
-            Copy-Item "$workDir\out\*" -Destination $distDir
-        }
+            # אריזת התוצר הבינארי
+            $distDir = New-Item -ItemType Directory -Path "$workDir\dist" -Force
+            if ((Test-Path "$srcRoot\build") -and (Test-Path "$srcRoot\package.json")) {
+                Copy-Item -Recurse "$srcRoot\build" "$distDir\build"
+                Copy-Item -Recurse "$srcRoot\node_modules" "$distDir\node_modules"
+                Copy-Item "$srcRoot\package.json" "$distDir\package.json"
+                @('@echo off', 'node "%~dp0build\server\index.js" %*') | Set-Content -Path "$distDir\$($recipe.bin)" -Encoding ASCII
+            }
+            elseif (Test-Path "$srcRoot\target\release") {
+                Get-ChildItem "$srcRoot\target\release\*.exe" | Copy-Item -Destination $distDir
+            }
+            if (Test-Path "$workDir\out") {
+                Copy-Item "$workDir\out\*" -Destination $distDir
+            }
 
-        # העתקה אוטומטית של קובצי קונפיגורציה
-        Get-ChildItem -Path $srcRoot -Include "*.conf", "*.ini", "config.json" -Recurse | Copy-Item -Destination $distDir -Force
+            # העתקה אוטומטית של קובצי קונפיגורציה (conf, ini, json, yaml, yml)
+            Get-ChildItem -Path $srcRoot -Include "*.conf", "*.ini", "config.json", "*.yaml", "*.yml" -Recurse | Copy-Item -Destination $distDir -Force
 
-        # ניקוי קובצי סרק מיותרים (sourcemaps, בדיקות וטיפוסים) להורדת הנפח
-        Get-ChildItem -Path $distDir -Include "*.map", "*.d.ts", "*.md", "test", "tests" -Recurse | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+            # ניקוי קובצי סרק מיותרים (sourcemaps, בדיקות וטיפוסים)
+            Get-ChildItem -Path $distDir -Include "*.map", "*.d.ts", "*.md", "test", "tests" -Recurse | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
 
-        # בדיקת ביטחון לווידוא קיום קבצים
-        $distFiles = Get-ChildItem -Path $distDir
-        if (-not $distFiles) {
-            throw "Build failed: No output binaries or scripts found in $distDir for $name."
-        }
+            # בדיקת ביטחון לווידוא קיום קבצים
+            $distFiles = Get-ChildItem -Path $distDir
+            if (-not $distFiles) {
+                throw "Build failed: No output binaries or scripts found in $distDir for $name."
+            }
 
-        # אריזה יעילה ומהירה ב-7z במקום ZIP פשוט
-        $packagedZip = Join-Path $workDir $zipName
-        7z a -t7z -mx=9 -ms=on "$packagedZip" "$distDir\*" | Out-Null
-        $sha256 = (Get-FileHash -Path $packagedZip -Algorithm SHA256).Hash.ToLower()
+            # אריזה ב-7z במצב Solid Archive
+            $packagedZip = Join-Path $workDir $zipName
+            7z a -t7z -mx=9 -ms=on "$packagedZip" "$distDir\*" | Out-Null
+            $sha256 = (Get-FileHash -Path $packagedZip -Algorithm SHA256).Hash.ToLower()
 
-        # העלאת שחרור חדש ל-GitHub Releases
-        Write-Host "Publishing release $releaseTag to $myRepo..."
-        # אם ה-Release כבר קיים - דריסת הקובץ הישן; אם לא - יצירת שחרור חדש
-        if ($releaseJson) {
-            Write-Host "Release $releaseTag already exists. Updating binary asset with --clobber..."
-            gh release upload $releaseTag $packagedZip --repo $myRepo --clobber
-        } else {
-            Write-Host "Publishing new release $releaseTag to $myRepo..."
-            gh release create $releaseTag $packagedZip `
-                --repo $myRepo `
-                --title "$name v$version" `
-                --notes "Automated generic cloud build for $name v$version"
-        }
+            # העלאה ל-GitHub Releases
+            Write-Host "Publishing release $releaseTag to $myRepo..."
+            if ($releaseJson) {
+                Write-Host "Release $releaseTag already exists. Updating binary asset with --clobber..."
+                gh release upload $releaseTag $packagedZip --repo $myRepo --clobber
+            } else {
+                Write-Host "Publishing new release $releaseTag to $myRepo..."
+                gh release create $releaseTag $packagedZip `
+                    --repo $myRepo `
+                    --title "$name v$version" `
+                    --notes "Automated generic cloud build for $name v$version"
+            }
 
-        $persistedFiles = @(Get-ChildItem -Path $distDir -Filter "*.conf" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name)
-        Remove-Item -Recurse -Force $workDir
+            $persistedFiles = @(Get-ChildItem -Path $distDir -Include "*.conf", "*.yaml", "*.yml" -Recurse -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name)
+            Remove-Item -Recurse -Force $workDir
         }
     }
 
@@ -294,18 +295,16 @@ foreach ($recipe in $recipes) {
     elseif ($mode -eq "hybrid") {
         Write-Host "Executing Hybrid strategy for $name (Cloud preparation + Local completion)..."
         
-        # 1. בענן: אריזת תלויות כבדות (כגון מודולים ונכסי Frontend שנבנו) לקובץ בסיס
         $myRepo = if ($env:GITHUB_REPOSITORY) { $env:GITHUB_REPOSITORY } else { "Anri2021/scoop-bucket" }
         $releaseTag = "$name-v$version-hybrid"
-        $zipName    = "$name-v$version-hybrid.zip"
+        $zipName    = "$name-v$version-hybrid.7z"
         $downloadUrl = "https://github.com/$myRepo/releases/download/$releaseTag/$zipName"
 
-        # 2. הזרקת פקודות קימפול משלימות לתוך Scoop בצד הלקוח
         $localPreInstall = @()
         $injectedDepends = @()
         if ($recipe.build_type -in @("node", "bun")) {
             $injectedDepends += "bun"
-            $localPreInstall += "bun run build:native" # קימפול מקומי של מודולי מערכת בלבד
+            $localPreInstall += "bun run build:native"
         }
         if ($recipe.custom_local_build) {
             $localPreInstall += $recipe.custom_local_build
@@ -316,7 +315,6 @@ foreach ($recipe in $recipes) {
     elseif ($mode -eq "local") {
         Write-Host "Generating local build instructions for $name..."
         $downloadUrl = "https://github.com/$($recipe.repo)/archive/refs/tags/v$version.zip"
-        # הורדה זמנית של קובץ המקור לחישוב Hash אמיתי (Scoop אינו תומך במחרוזת "skip")
         $tempSourceZip = Join-Path $env:TEMP "$name-v$version.zip"
         Invoke-WebRequest -Uri $downloadUrl -OutFile $tempSourceZip
         $sha256 = (Get-FileHash -Path $tempSourceZip -Algorithm SHA256).Hash.ToLower()
@@ -325,7 +323,6 @@ foreach ($recipe in $recipes) {
         $localPreInstall = @()
         $injectedDepends = @()
 
-        # זיהוי כלי הבנייה הנדרשים והזרקתם לפי סוג הפרויקט
         if ($recipe.build_type -eq "node" -or $recipe.build_type -eq "bun") {
             $injectedDepends += "bun"
             $localPreInstall += "bun install --ignore-scripts --no-progress"
@@ -344,7 +341,6 @@ foreach ($recipe in $recipes) {
             $localPreInstall += "make -j$env:NUMBER_OF_PROCESSORS"
         }
 
-        # הוספת פקודות קימפול מותאמות אישית אם הוגדרו ב-recipe
         if ($recipe.custom_build) {
             $localPreInstall += $recipe.custom_build
         }
@@ -368,7 +364,6 @@ foreach ($recipe in $recipes) {
         $manifestObj["depends"] = if ($finalDepends.Count -eq 1) { $finalDepends[0] } else { $finalDepends | Select-Object -Unique }
     }
 
-    # הזרקת סקריפט הבנייה המקומי ישירות לשדה pre_install במניפסט
     if ($localPreInstall -and $localPreInstall.Count -gt 0) {
         $manifestObj["pre_install"] = $localPreInstall
     }
@@ -394,7 +389,7 @@ foreach ($recipe in $recipes) {
 
     # שימור קובצי קונפיגורציה במניפסט
     if ($persistedFiles.Count -gt 0) {
-        $manifestObj["persist"] = if ($persistedFiles.Count -eq 1) { $persistedFiles[0] } else { $persistedFiles }
+        $manifestObj["persist"] = if ($persistedFiles.Count -eq 1) { $persistedFiles[0] } else { $persistedFiles | Select-Object -Unique }
     }
 
     $manifestJson = $manifestObj | ConvertTo-Json -Depth 10

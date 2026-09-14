@@ -176,6 +176,16 @@ foreach ($recipe in $recipes) {
             Write-Host "Detected Go project. Building..."
             go build -ldflags="-s -w" -o "$workDir\out\"
         }
+        elseif (Test-Path "*.py") {
+            Write-Host "Detected Python project. Compiling to standalone EXE with PyInstaller..."
+            pip install --quiet pyinstaller
+            $pyEntry = (Get-ChildItem "*.py" | Select-Object -First 1).Name
+            pyinstaller --onefile --clean $pyEntry --distpath "$workDir\out"
+        }
+        elseif (Test-Path "*.ps1") {
+            Write-Host "Detected standalone PowerShell utility. Copying scripts..."
+            Copy-Item "*.ps1" -Destination "$workDir\out"
+        }
 
         Pop-Location
 
@@ -190,8 +200,17 @@ foreach ($recipe in $recipes) {
         elseif (Test-Path "$srcRoot\target\release") {
             Get-ChildItem "$srcRoot\target\release\*.exe" | Copy-Item -Destination $distDir
         }
-        elseif (Test-Path "$workDir\out") {
+        if (Test-Path "$workDir\out") {
             Copy-Item "$workDir\out\*" -Destination $distDir
+        }
+
+        # העתקה אוטומטית של קובצי קונפיגורציה (conf, json, ini)
+        Get-ChildItem -Path $srcRoot -Include "*.conf", "*.ini", "config.json" -Recurse | Copy-Item -Destination $distDir -Force
+
+        # בדיקת ביטחון למניעת קריסה אם התיקייה ריקה
+        $distFiles = Get-ChildItem -Path $distDir
+        if (-not $distFiles) {
+            throw "Build failed: No output binaries or scripts found in $distDir for $name."
         }
 
         $packagedZip = Join-Path $workDir $zipName
@@ -304,6 +323,11 @@ foreach ($recipe in $recipes) {
         $manifestObj["autoupdate"] = @{
             "url" = "https://github.com/$($recipe.repo)/releases/download/v`$version/" + [System.IO.Path]::GetFileName($downloadUrl)
         }
+    }
+    # זיהוי קובצי conf והגדרתם תחת persist כדי למנוע דריסת הגדרות בעדכון
+    $confFiles = @(Get-ChildItem -Path $distDir -Filter "*.conf" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name)
+    if ($confFiles.Count -gt 0) {
+        $manifestObj["persist"] = if ($confFiles.Count -eq 1) { $confFiles[0] } else { $confFiles }
     }
 
     $manifestJson = $manifestObj | ConvertTo-Json -Depth 10

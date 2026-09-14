@@ -191,7 +191,7 @@ foreach ($recipe in $recipes) {
 
         # אריזת התוצר הבינארי
         $distDir = New-Item -ItemType Directory -Path "$workDir\dist" -Force
-        if (Test-Path "$srcRoot\build") {
+        if ((Test-Path "$srcRoot\build") -and (Test-Path "$srcRoot\package.json")) {
             Copy-Item -Recurse "$srcRoot\build" "$distDir\build"
             Copy-Item -Recurse "$srcRoot\node_modules" "$distDir\node_modules"
             Copy-Item "$srcRoot\package.json" "$distDir\package.json"
@@ -325,9 +325,11 @@ foreach ($recipe in $recipes) {
         }
     }
     # זיהוי קובצי conf והגדרתם תחת persist כדי למנוע דריסת הגדרות בעדכון
-    $confFiles = @(Get-ChildItem -Path $distDir -Filter "*.conf" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name)
-    if ($confFiles.Count -gt 0) {
-        $manifestObj["persist"] = if ($confFiles.Count -eq 1) { $confFiles[0] } else { $confFiles }
+    if ($distDir -and (Test-Path $distDir)) {
+        $confFiles = @(Get-ChildItem -Path $distDir -Filter "*.conf" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name)
+        if ($confFiles.Count -gt 0) {
+            $manifestObj["persist"] = if ($confFiles.Count -eq 1) { $confFiles[0] } else { $confFiles }
+        }
     }
 
     $manifestJson = $manifestObj | ConvertTo-Json -Depth 10

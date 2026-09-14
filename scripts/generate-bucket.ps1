@@ -242,12 +242,12 @@ function Get-BuildType {
   param([object]$Plan,[string]$SourceRoot)
   $type=([string](Get-Prop $Plan.recipe "build_type" "auto")).ToLowerInvariant()
   if($type-ne"auto"){return $type}
-  if(Test-Path (Join-Path $SourceRoot "pyproject.toml")){return"python"}
-  if(Test-Path (Join-Path $SourceRoot "requirements.txt")){return"python"}
-  if(Test-Path (Join-Path $SourceRoot "package.json")){return"node"}
-  if(Test-Path (Join-Path $SourceRoot "Cargo.toml")){return"rust"}
-  if(Test-Path (Join-Path $SourceRoot "go.mod")){return"go"}
-  if(Get-ChildItem -LiteralPath $SourceRoot -Filter "*.ps1" -File|Select-Object -First 1){return"powershell"}
+  if(Test-Path (Join-Path $SourceRoot "pyproject.toml")){return "python"}
+  if(Test-Path (Join-Path $SourceRoot "requirements.txt")){return "python"}
+  if(Test-Path (Join-Path $SourceRoot "package.json")){return "node"}
+  if(Test-Path (Join-Path $SourceRoot "Cargo.toml")){return "rust"}
+  if(Test-Path (Join-Path $SourceRoot "go.mod")){return "go"}
+  if(Get-ChildItem -LiteralPath $SourceRoot -Filter "*.ps1" -File|Select-Object -First 1){return "powershell"}
   throw "Cannot detect build_type for '$($Plan.name)'."
 }
 
@@ -317,10 +317,10 @@ function Invoke-BuildPhase {
     $levelPlans=@($level|ForEach-Object{$byName[$_]})
     $results=@($levelPlans|ForEach-Object -Parallel {
       $plan=$_;$stageRoot=$using:stageRoot;$cacheRoot=[IO.Path]::GetFullPath($using:CacheDir);$throttle=$using:ThrottleLimit
-      function Prop{param([object]$o,[string]$n,$d=$null);$p=$o.PSObject.Properties[$n];if($null-eq$p-or$null-eq$p.Value){return$d};return$p.Value}
-      function Hash{param([string]$p);$s=[IO.File]::OpenRead($p);try{return[Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($s)).ToLowerInvariant()}finally{$s.Dispose()}}
-      function Cmd{param([string]$f,[string[]]$a);&$f @a 2>&1|Out-Host;if($LASTEXITCODE-ne0){throw"'$f' failed: $LASTEXITCODE"}}
-      function Cache{param([string]$u,[string]$p,[string]$h="");if(Test-Path $p){$a=Hash $p;if(-not$h-or$a-eq$h){return$p};Remove-Item $p -Force};$null=New-Item -ItemType Directory -Force -Path ([IO.Path]::GetDirectoryName($p));Invoke-WebRequest $u -OutFile $p -UseBasicParsing;if($h-and(Hash $p)-ne$h){throw"Hash mismatch"};return$p}
+      function Prop{param([object]$o,[string]$n,$d=$null);$p=$o.PSObject.Properties[$n];if($null-eq$p-or$null-eq$p.Value){return $d};return $p.Value}
+      function Hash{param([string]$p);$s=[IO.File]::OpenRead($p);try{return [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($s)).ToLowerInvariant()}finally{$s.Dispose()}}
+      function Cmd{param([string]$f,[string[]]$a);&$f @a 2>&1|Out-Host;if($LASTEXITCODE-ne0){throw "'$f' failed: $LASTEXITCODE"}}
+      function Cache{param([string]$u,[string]$p,[string]$h="");if(Test-Path $p){$a=Hash $p;if(-not$h-or$a-eq$h){return $p};Remove-Item $p -Force};$null=New-Item -ItemType Directory -Force -Path ([IO.Path]::GetDirectoryName($p));Invoke-WebRequest $u -OutFile $p -UseBasicParsing;if($h-and(Hash $p)-ne$h){throw "Hash mismatch"};return $p}
       $work=Join-Path $stageRoot ("work-"+$plan.name+"-"+$plan.fingerprint.Substring(0,8))
       try{
         $bootstrap=[bool](Prop $plan.recipe "toolchain" (Prop $plan.recipe "bootstrap" $false))
@@ -336,10 +336,10 @@ function Invoke-BuildPhase {
             Set-Content $marker $plan.version -Encoding ascii
           }
           $exe=[string](Prop $plan.recipe "bootstrap_exe" (Prop $plan.recipe "bin"))
-          $found=Get-ChildItem $toolRoot -Filter $exe -File -Recurse|Select-Object -First 1;if(-not$found){throw"Tool '$exe' not found"}
+          $found=Get-ChildItem $toolRoot -Filter $exe -File -Recurse|Select-Object -First 1;if(-not$found){throw "Tool '$exe' not found"}
           $bootstrapPath=$found.DirectoryName
         }
-        if(-not$plan.needs_build){return[pscustomobject]@{name=$plan.name;status="reused";archive="";hash=$plan.published_hash;bootstrap_path=$bootstrapPath;error=$null}}
+        if(-not$plan.needs_build){return [pscustomobject]@{name=$plan.name;status="reused";archive="";hash=$plan.published_hash;bootstrap_path=$bootstrapPath;error=$null}}
         Remove-Item $work -Recurse -Force -ErrorAction SilentlyContinue
         $sourceDir=Join-Path $work "source";$packageDir=Join-Path $work "package";$outputDir=Join-Path $stageRoot $plan.name
         $null=New-Item -ItemType Directory -Force -Path $sourceDir,$packageDir,$outputDir
@@ -371,12 +371,12 @@ function Invoke-BuildPhase {
               "node"{Cmd "corepack" @("enable");Cmd "pnpm" @("install","--frozen-lockfile");Cmd "pnpm" @("run","build");foreach($p in @("build","dist","drizzle","package.json","pnpm-lock.yaml")){if(Test-Path$p){Copy-Item $p $packageDir -Recurse -Force}};Push-Location $packageDir;try{if(Test-Path"pnpm-lock.yaml"){Cmd "pnpm" @("install","--prod","--frozen-lockfile")}}finally{Pop-Location};@("@echo off",'node "%~dp0build\server\index.js" %*')|Set-Content (Join-Path $packageDir "$($plan.name).cmd") -Encoding ascii}
               "bun"{Cmd "bun" @("install","--frozen-lockfile");Cmd "bun" @("run","build");$out=[string](Prop $plan.recipe "output_path" "dist");Copy-Item $out $packageDir -Recurse -Force}
               "powershell"{$entry=[string](Prop $plan.recipe "entrypoint" (Prop $plan.recipe "bin"));Copy-Item $entry $packageDir}
-              default{throw"Unsupported build_type '$type'"}
+              default{throw "Unsupported build_type '$type'"}
             }
           }finally{Pop-Location}
         }
         Get-ChildItem $packageDir -Recurse -Force|Where-Object{$_.Name-match"(?i)^(test|tests|docs|__pycache__)$|\.(map|pdb|d\.ts|pyc)$"}|Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
-        if(-not(Get-ChildItem $packageDir -File -Recurse|Select-Object -First 1)){throw"Empty package"}
+        if(-not(Get-ChildItem $packageDir -File -Recurse|Select-Object -First 1)){throw "Empty package"}
         $archive=Join-Path $outputDir $plan.artifact_name
         $level=[int](Prop $plan.recipe "compression_level" 7);$threads=[Math]::Max(1,[int]([Environment]::ProcessorCount/[Math]::Max(1,$throttle)))
         Cmd "7z" @("a","-t7z","-mx=$level","-m0=lzma2","-ms=on","-mqs=on","-mmt=$threads",$archive,(Join-Path $packageDir "*"))
@@ -396,7 +396,7 @@ function Invoke-BuildPhase {
 function Get-LocalCommands {
   param([object]$Plan)
   $custom=@(Get-Prop $Plan.recipe "local_commands" @())
-  if($custom.Count){return$custom}
+  if($custom.Count){return $custom}
   $type=([string](Get-Prop $Plan.recipe "build_type" "auto")).ToLowerInvariant()
   $name=[string]$Plan.name;$bin=[string](Get-Prop $Plan.recipe "bin" "")
   $offline=$Plan.mode-eq"hybrid"
@@ -457,8 +457,8 @@ function Invoke-FinalizePhase {
     elseif($plan.mode-eq"local"){$urls=@($plan.source_url);$hashes=@($plan.source_hash);$extractDir=[string]$plan.source_extract_dir}
     else{
       if($plan.needs_build){
-        $result=$results[$plan.name];if(-not$result-or$result.status-ne"built"){throw"Missing build result for '$($plan.name)'."}
-        $archive=Get-ChildItem -LiteralPath $StageDir -Filter $result.archive -File -Recurse|Select-Object -First 1;if(-not$archive){throw"Missing staged archive '$($result.archive)'."}
+        $result=$results[$plan.name];if(-not$result-or$result.status-ne"built"){throw "Missing build result for '$($plan.name)'."}
+        $archive=Get-ChildItem -LiteralPath $StageDir -Filter $result.archive -File -Recurse|Select-Object -First 1;if(-not$archive){throw "Missing staged archive '$($result.archive)'."}
         if($NoPublish){$urls=@($archive.FullName)}
         else{
           $exists=$false;try{$null=Invoke-Checked "gh" @("release","view",$plan.release_tag,"--repo",$targetRepo);$exists=$true}catch{}
@@ -495,7 +495,7 @@ $PlanPath=[IO.Path]::GetFullPath($PlanPath)
 $StageDir=[IO.Path]::GetFullPath($StageDir)
 $BucketDir=[IO.Path]::GetFullPath($BucketDir)
 $CacheDir=[IO.Path]::GetFullPath($CacheDir)
-if(-not(Test-Path $RecipesPath)){throw"Recipes file not found: $RecipesPath"}
+if(-not(Test-Path $RecipesPath)){throw "Recipes file not found: $RecipesPath"}
 $config=Get-Content $RecipesPath -Raw -Encoding utf8|ConvertFrom-Json
 $recipes=@($config.recipes);Assert-Recipes $recipes
 $targetRepository=if($env:GITHUB_REPOSITORY){$env:GITHUB_REPOSITORY}else{"Anri2021/scoop-bucket"}
@@ -508,9 +508,9 @@ if($Phase-in@("Plan","All")){
   if($ValidateOnly){exit 0}
 }
 if($Phase-in@("Build","Finalize")){
-  if(-not(Test-Path $PlanPath)){throw"Plan not found: $PlanPath"}
+  if(-not(Test-Path $PlanPath)){throw "Plan not found: $PlanPath"}
   $planDocument=Get-Content $PlanPath -Raw -Encoding utf8|ConvertFrom-Json
-  if($planDocument.engine_version-ne$EngineVersion){throw"Plan engine version mismatch."}
+  if($planDocument.engine_version-ne$EngineVersion){throw "Plan engine version mismatch."}
   $plans=@($planDocument.packages)
 }
 if($Phase-in@("Build","All")){Invoke-BuildPhase $plans}

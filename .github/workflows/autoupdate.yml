@@ -1,36 +1,53 @@
-name: Auto-update Scoop Manifests
+name: Meta-Bucket Auto Engine
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 * * * *' # בודק כל שעה האם יצאה גרסה חדשה
+    - cron: '0 * * * *' # בדיקה וסנכרון שעתית
 
 jobs:
-  update:
+  build-and-sync:
     runs-on: windows-latest
+    permissions:
+      contents: write
     steps:
-      - name: Checkout bucket repository
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GH_PAT }}
           fetch-depth: 0
 
-      - name: Run Official Scoop Checkver & Update
+      - name: Setup Bun Environment
+        uses: oven-sh/setup-bun@v2
+
+      - name: Setup Go Environment
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+
+      - name: Setup Python Environment
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run Meta-Bucket Generator
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
-          # 1. התקנת ליבת Scoop בסביבת ה-Runner
-          Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
+          # הרצת מנוע האוטומציה מול קובץ התצורות המרכזי
+          & "./scripts/generate-bucket.ps1" -RecipesPath "recipes.json" -BucketDir "bucket"
 
-          # 2. הרצת checkver המובנה של Scoop עם דגל עדכון (-u) עבור כל קובצי ה-JSON
-          $checkver = "$env:USERPROFILE\scoop\apps\scoop\current\bin\checkver.ps1"
-          & $checkver -Dir . * -u
-
-          # 3. שמירת השינויים וביצוע Push אוטומטי אם חושב Hash/גרסה חדשה
+          # סנכרון ושמירה חזרה למאגר ב-GitHub
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add .
+          git add bucket/ recipes.json
           if (-not (git diff --staged --quiet)) {
-              git commit -m "Auto-update manifests via official checkver"
+              git commit -m "Auto-generate manifests and sync releases via Meta-Bucket"
               git pull --rebase origin main
               git push origin main
+          } else {
+              Write-Host "No changes detected. Bucket manifests are fully up to date."
           }
+          

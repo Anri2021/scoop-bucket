@@ -29,6 +29,8 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Install Python Build Tools
+        run: pip install --upgrade pyinstaller
 
       - name: Run Meta-Bucket Generator
         shell: pwsh

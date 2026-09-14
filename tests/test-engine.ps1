@@ -73,8 +73,10 @@ try{
 
   $cycleRecipes=Join-Path $temp "cycle.json"
   '{"recipes":[{"name":"a","description":"a","homepage":"https://example.invalid","license":"MIT","repo":"o/r","tool_dependencies":["b"]},{"name":"b","description":"b","homepage":"https://example.invalid","license":"MIT","repo":"o/r","tool_dependencies":["a"]}]}'|Set-Content $cycleRecipes -Encoding utf8
-  & $enginePath -Phase Plan -ValidateOnly -RecipesPath $cycleRecipes -PlanPath (Join-Path $temp "cycle-plan.json") 2>$null
-  Assert-True ($LASTEXITCODE-ne0) "toolchain cycles must be rejected"
+  $cycleRejected=$false
+  try { & $enginePath -Phase Plan -ValidateOnly -RecipesPath $cycleRecipes -PlanPath (Join-Path $temp "cycle-plan.json") 2>$null }
+  catch { $cycleRejected=$true }
+  Assert-True $cycleRejected "toolchain cycles must be rejected"
 }finally{
   if(Test-Path $temp){Remove-Item $temp -Recurse -Force}
 }

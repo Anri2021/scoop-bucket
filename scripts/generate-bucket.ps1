@@ -36,6 +36,7 @@ foreach ($recipe in $recipes) {
     $sha256       = $null
     $upstreamAssetFound = $false
     # איפוס משתני מצב בכל איטרציה למניעת זליגת הגדרות בין חבילות
+    $persistedFiles = @()
     $localPreInstall = @()
     $injectedDepends = @()
     $distDir         = $null
@@ -153,10 +154,17 @@ foreach ($recipe in $recipes) {
         $toolsDir = Join-Path $env:TEMP "toolchain\$name"
         New-Item -ItemType Directory -Path $toolsDir -Force | Out-Null
 
-        $toolZip = Join-Path $env:TEMP "$name-tool.zip"
-        Invoke-WebRequest -Uri $downloadUrl -OutFile $toolZip
-        Expand-Archive -Path $toolZip -DestinationPath $toolsDir -Force
-        Remove-Item -Force $toolZip
+      $toolFile = Join-Path $env:TEMP ([System.IO.Path]::GetFileName($downloadUrl))
+      Invoke-WebRequest -Uri $downloadUrl -OutFile $toolFile
+      if ($toolFile -match '\.zip$') {
+          Expand-Archive -Path $toolFile -DestinationPath $toolsDir -Force
+          Remove-Item -Force $toolFile
+      } elseif ($toolFile -match '\.7z$') {
+          7z x -y "-o$toolsDir" $toolFile | Out-Null
+          Remove-Item -Force $toolFile
+      } else {
+          Move-Item -Path $toolFile -Destination $toolsDir -Force
+      }
 
         # איתור תיקיית הבינארי והוספה ל-PATH הנוכחי ול-GitHub Actions PATH
         $binDir = (Get-ChildItem -Path $toolsDir -Filter $recipe.bin -Recurse | Select-Object -First 1).DirectoryName
@@ -266,7 +274,7 @@ foreach ($recipe in $recipes) {
         # העלאת שחרור חדש ל-GitHub Releases
         Write-Host "Publishing release $releaseTag to $myRepo..."
         # אם ה-Release כבר קיים - דריסת הקובץ הישן; אם לא - יצירת שחרור חדש
-        if ($releaseExists) {
+        if ($releaseJson) {
             Write-Host "Release $releaseTag already exists. Updating binary asset with --clobber..."
             gh release upload $releaseTag $packagedZip --repo $myRepo --clobber
         } else {
@@ -277,6 +285,7 @@ foreach ($recipe in $recipes) {
                 --notes "Automated generic cloud build for $name v$version"
         }
 
+        $persistedFiles = @(Get-ChildItem -Path $distDir -Filter "*.conf" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name)
         Remove-Item -Recurse -Force $workDir
         }
     }
@@ -382,12 +391,10 @@ foreach ($recipe in $recipes) {
             "url" = "https://github.com/$($recipe.repo)/releases/download/v`$version/" + [System.IO.Path]::GetFileName($downloadUrl)
         }
     }
-    # זיהוי קובצי conf והגדרתם תחת persist כדי למנוע דריסת הגדרות בעדכון
-    if ($distDir -and (Test-Path $distDir)) {
-        $confFiles = @(Get-ChildItem -Path $distDir -Filter "*.conf" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name)
-        if ($confFiles.Count -gt 0) {
-            $manifestObj["persist"] = if ($confFiles.Count -eq 1) { $confFiles[0] } else { $confFiles }
-        }
+
+    # שימור קובצי קונפיגורציה במניפסט
+    if ($persistedFiles.Count -gt 0) {
+        $manifestObj["persist"] = if ($persistedFiles.Count -eq 1) { $persistedFiles[0] } else { $persistedFiles }
     }
 
     $manifestJson = $manifestObj | ConvertTo-Json -Depth 10

@@ -51,6 +51,12 @@ try{
   $document=[ordered]@{engine_version="3.0";recipes_sha256=$hash;packages=$plans}
   $document|ConvertTo-Json -Depth 30|Set-Content -LiteralPath $plan -Encoding utf8
 
+  $testCache=Join-Path $temp "cache"
+  & $enginePath -Phase Build -RecipesPath $recipesPath -PlanPath $plan -StageDir $stage -CacheDir $testCache
+  $buildResults=@((Get-Content (Join-Path $stage "results.json") -Raw|ConvertFrom-Json).results)
+  Assert-True (@($buildResults|Where-Object status -ne "reused").Count-eq0) "unchanged packages must not rebuild"
+  Assert-True (-not(Test-Path (Join-Path $testCache "toolchain"))) "unused toolchains must not be downloaded"
+
   & $enginePath -Phase Finalize -RecipesPath $recipesPath -PlanPath $plan -StageDir $stage -BucketDir $bucket -NoPublish
 
   $local=Get-Content (Join-Path $bucket "fixture-local.json") -Raw|ConvertFrom-Json

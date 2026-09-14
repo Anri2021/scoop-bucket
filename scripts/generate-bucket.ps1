@@ -48,10 +48,12 @@ $names = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgn
 foreach ($recipe in $recipes) {
   $name = [string](Get-PropertyValue $recipe "name")
   $repo = [string](Get-PropertyValue $recipe "repo")
+  $sourceType = ([string](Get-PropertyValue $recipe "source_type" "github")).ToLowerInvariant()
   $mode = [string](Get-PropertyValue $recipe "mode" "auto")
   if ([string]::IsNullOrWhiteSpace($name)) { throw "Every recipe requires a name." }
   if (-not $names.Add($name)) { throw "Duplicate recipe name: $name" }
-  if ([string]::IsNullOrWhiteSpace($repo)) { throw "Recipe '$name' requires repo." }
+  if ($sourceType -notin @("github","pypi")) { throw "Recipe '$name' has unsupported source_type '$sourceType'." }
+  if ($sourceType -eq "github" -and [string]::IsNullOrWhiteSpace($repo)) { throw "GitHub recipe '$name' requires repo." }
   if (-not $allowedModes.Contains($mode)) { throw "Recipe '$name' has unsupported mode '$mode'." }
 }
 
@@ -129,17 +131,30 @@ foreach ($tier in $tiers) {
       $token = if ($env:GH_TOKEN) { $env:GH_TOKEN } else { $env:GITHUB_TOKEN }
       if ($token) { $headers.Authorization = "Bearer $token" }
 
-      $release = Invoke-RestMethod -Uri ("https://api.github.com/repos/{0}/releases/latest" -f $recipe.repo) -Headers $headers
-      $versionPattern = [string](Prop $recipe "version_regex" "(?<version>\d+(?:\.\d+)+(?:[-+][0-9A-Za-z.-]+)?)")
-      $match = [regex]::Match([string]$release.tag_name, $versionPattern)
-      if (-not $match.Success) { throw "Tag '$($release.tag_name)' does not match version_regex." }
-      $version = if ($match.Groups["version"].Success) { $match.Groups["version"].Value } else { $match.Value }
+      $sourceType = ([string](Prop $recipe "source_type" "github")).ToLowerInvariant()
+      if ($sourceType -eq "pypi") {
+        $packageName = [string](Prop $recipe "package" $name)
+        $metadata = Invoke-RestMethod -Uri ("https://pypi.org/pypi/{0}/json" -f $packageName)
+        $version = [string]$metadata.info.version
+        $files = @($metadata.urls | ForEach-Object {
+          [pscustomobject]@{ id=$_.digests.sha256.Substring(0,16); name=$_.filename; browser_download_url=$_.url; digest="sha256:$($_.digests.sha256)"; packagetype=$_.packagetype }
+        })
+        $sdist = @($files | Where-Object packagetype -eq "sdist") | Select-Object -First 1
+        if (-not $sdist) { throw "PyPI package '$packageName' has no source distribution." }
+        $release = [pscustomobject]@{ id="$packageName-$version"; tag_name=$version; zipball_url=$sdist.browser_download_url; assets=$files }
+      } else {
+        $release = Invoke-RestMethod -Uri ("https://api.github.com/repos/{0}/releases/latest" -f $recipe.repo) -Headers $headers
+        $versionPattern = [string](Prop $recipe "version_regex" "(?<version>\d+(?:\.\d+)+(?:[-+][0-9A-Za-z.-]+)?)")
+        $match = [regex]::Match([string]$release.tag_name, $versionPattern)
+        if (-not $match.Success) { throw "Tag '$($release.tag_name)' does not match version_regex." }
+        $version = if ($match.Groups["version"].Success) { $match.Groups["version"].Value } else { $match.Value }
+      }
 
       $assetPattern = [string](Prop $recipe "asset_pattern" "")
       $primary = $null
       if ($assetPattern) { $primary = @($release.assets | Where-Object { $_.name -match $assetPattern }) | Select-Object -First 1 }
 
-      if ($mode -eq "auto") { $mode = if ($primary) { "upstream" } else { "cloud" } }
+      if ($mode -eq "auto") { $mode = if ($sourceType -eq "pypi") { "cloud" } elseif ($primary) { "upstream" } else { "cloud" } }
       if ($mode -eq "upstream" -and -not $primary) { throw "No upstream asset matches '$assetPattern'." }
 
       $manifestPath = Join-Path $bucketRoot "$name.json"
@@ -210,7 +225,11 @@ foreach ($tier in $tiers) {
           $null = New-Item -ItemType Directory -Force -Path $sourceDir, $packageDir
           $sourceZip = Join-Path $cacheDir ("source-" + $release.id + ".zip")
           $null = Get-CachedFile ([string]$release.zipball_url) $sourceZip ""
-          Expand-Archive -LiteralPath $sourceZip -DestinationPath $sourceDir -Force
+          if ([string]$release.zipball_url -match "(?i)\.(zip|whl)(\?|$)") {
+            Expand-Archive -LiteralPath $sourceZip -DestinationPath $sourceDir -Force
+          } else {
+            Invoke-Checked "tar" @("-xf", $sourceZip, "-C", $sourceDir)
+          }
           $sourceRoot = (Get-ChildItem -LiteralPath $sourceDir -Directory | Select-Object -First 1).FullName
           $buildType = ([string](Prop $recipe "build_type" "auto")).ToLowerInvariant()
           if ($buildType -eq "auto") {
@@ -250,6 +269,14 @@ foreach ($tier in $tiers) {
                 Push-Location $packageDir
                 try { Invoke-Checked "pnpm" @("install","--prod","--frozen-lockfile") } finally { Pop-Location }
                 @("@echo off",'node "%~dp0build\server\index.js" %*') | Set-Content -LiteralPath (Join-Path $packageDir "$name.cmd") -Encoding ascii
+              }
+              "bun" {
+                Invoke-Checked "bun" @("install","--frozen-lockfile")
+                Invoke-Checked "bun" @("run","build")
+                $outputPath = [string](Prop $recipe "output_path" "dist")
+                $candidate = Join-Path $sourceRoot $outputPath
+                if (-not (Test-Path $candidate)) { throw "Bun output_path '$outputPath' was not produced." }
+                Copy-Item -LiteralPath $candidate -Destination $packageDir -Recurse -Force
               }
               "powershell" {
                 $entry = [string](Prop $recipe "entrypoint" (Prop $recipe "bin"))
@@ -319,6 +346,16 @@ foreach ($tier in $tiers) {
       }
       if ($depends.Count) { $manifest.depends = @($depends | Sort-Object) }
       $commands = @(Prop $recipe "local_commands" @())
+      if ($mode -in @("local","hybrid") -and -not $commands.Count) {
+        $commands = switch (([string](Prop $recipe "build_type" "")).ToLowerInvariant()) {
+          "python" { @("python -m pip install --disable-pip-version-check .") }
+          "go" { @("go build -trimpath .") }
+          "rust" { @("cargo build --locked --release") }
+          "node" { @("corepack enable", "pnpm install --frozen-lockfile", "pnpm run build") }
+          "bun" { @("bun install --frozen-lockfile", "bun run build") }
+          default { @() }
+        }
+      }
       if ($mode -in @("local","hybrid") -and $commands.Count) { $manifest.pre_install = $commands }
       if ($persist.Count) { $manifest.persist = @($persist | Sort-Object) }
       if (Prop $recipe "shortcuts") { $manifest.shortcuts = Prop $recipe "shortcuts" }

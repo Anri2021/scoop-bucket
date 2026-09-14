@@ -62,7 +62,7 @@ $allResults = [Collections.Generic.List[object]]::new()
 
 foreach ($tier in $tiers) {
   $tierRecipes = @($recipes | Where-Object { [int](Get-PropertyValue $_ "tier" 1) -eq $tier })
-  Write-Host "Tier $tier: resolving $($tierRecipes.Count) recipe(s), throttle $ThrottleLimit."
+  Write-Host "Tier ${tier}: resolving $($tierRecipes.Count) recipe(s), throttle $ThrottleLimit."
 
   $tierResults = @($tierRecipes | ForEach-Object -Parallel {
     $recipe = $_

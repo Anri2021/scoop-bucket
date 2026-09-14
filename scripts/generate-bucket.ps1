@@ -346,7 +346,7 @@ foreach ($recipe in $recipes) {
             "github" = "https://github.com/$($recipe.repo)"
         }
         $manifestObj["autoupdate"] = @{
-            "url" = "https://github.com/Anri2021/scoop-bucket/releases/download/$name-v`$version/$name-v`$version-windows-x64.zip"
+            "url" = "https://github.com/Anri2021/scoop-bucket/releases/download/$name-v`$version/$name-v`$version-windows-x64.7z"
         }
     }
     elseif ($sourceType -eq "github") {

@@ -247,6 +247,7 @@ foreach ($recipe in $recipes) {
         }
 
         Remove-Item -Recurse -Force $workDir
+        }
     }
 
     # מצב היברידי: הכנת תלויות ונכסים גנריים בענן, והשלמת קימפול מקומית

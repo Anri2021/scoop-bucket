@@ -19,6 +19,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
+$PSNativeCommandUseErrorActionPreference = $false
 
 function Get-PropertyValue {
   param([object]$Object, [string]$Name, $Default = $null)
@@ -83,7 +84,7 @@ foreach ($tier in $tiers) {
 
     function Invoke-Checked {
       param([string]$File, [string[]]$Arguments)
-      & $File @Arguments | Out-Host
+      & $File @Arguments 2>&1 | Out-Host
       if ($LASTEXITCODE -ne 0) { throw "'$File' exited with code $LASTEXITCODE." }
     }
 

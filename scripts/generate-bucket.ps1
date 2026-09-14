@@ -477,7 +477,7 @@ function Invoke-FinalizePhase {
     if($architectures.Count-eq1-and$architectures[0]-eq"64bit"){$manifest.url=$download.url;$manifest.hash=$download.hash;if($extractDir){$manifest.extract_dir=$extractDir}}
     else{$manifest.architecture=[ordered]@{};foreach($arch in $architectures){$manifest.architecture[$arch]=$download}}
     $bin=Get-Prop $plan.recipe "bin";if($bin){$manifest.bin=$bin}
-    $depends=Get-ToolDepends $plan;if($depends.Count){$manifest.depends=if($depends.Count-eq1){$depends[0]}else{$depends}}
+    $depends=@(Get-ToolDepends $plan);if($depends.Count){$manifest.depends=if($depends.Count-eq1){$depends[0]}else{$depends}}
     if($plan.mode-in@("local","hybrid")){$manifest.pre_install=Get-LocalCommands $plan}
     $persist=@(Get-Prop $plan.recipe "persist" @());if($persist.Count){$manifest.persist=if($persist.Count-eq1){$persist[0]}else{$persist}}
     $shortcuts=Get-Prop $plan.recipe "shortcuts";if($shortcuts){$manifest.shortcuts=$shortcuts}

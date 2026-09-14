@@ -1,25 +1,22 @@
 {
   "$schema": "https://raw.githubusercontent.com/ScoopInstaller/Scoop/master/schema.json",
   "recipes": [
-    {
+  {
       "name": "headplane",
       "description": "A frontend for headscale",
       "homepage": "https://github.com/tale/headplane",
       "license": "AGPL-3.0-only",
-      "source_type": "github",
       "repo": "tale/headplane",
-      "mode": "cloud",
-      "bin": "headplane.cmd",
-      "depends": "nodejs-lts"
+      "mode": "local",
+      "build_type": "bun",
+      "bin": "headplane.cmd"
     },
     {
       "name": "ipv6-advertiser",
       "description": "IPv6 Router Advertisement Daemon",
       "homepage": "https://github.com/Anri2021/ipv6-advertiser",
       "license": "MIT",
-      "source_type": "github",
       "repo": "Anri2021/ipv6-advertiser",
-      "mode": "upstream",
       "bin": "ipv6-advertiser.exe"
     },
     {
@@ -27,9 +24,7 @@
       "description": "Dynu DDNS IP update utility",
       "homepage": "https://github.com/Anri2021/ddns-dynu",
       "license": "MIT",
-      "source_type": "github",
       "repo": "Anri2021/ddns-dynu",
-      "mode": "upstream",
       "bin": "ddns-dynu.exe"
     }
   ]

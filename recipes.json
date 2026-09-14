@@ -1,14 +1,24 @@
 {
   "$schema": "https://raw.githubusercontent.com/ScoopInstaller/Scoop/master/schema.json",
   "recipes": [
-  {
+    {
+      "name": "bun",
+      "description": "Incredibly fast JavaScript runtime and toolkit",
+      "homepage": "https://bun.sh",
+      "license": "MIT",
+      "repo": "oven-sh/bun",
+      "tier": 0,
+      "mode": "upstream",
+      "bin": "bun.exe"
+    },
+    {
       "name": "headplane",
       "description": "A frontend for headscale",
       "homepage": "https://github.com/tale/headplane",
       "license": "AGPL-3.0-only",
       "repo": "tale/headplane",
+      "tier": 1,
       "mode": "cloud",
-      "build_type": "bun",
       "bin": "headplane.cmd"
     },
     {
@@ -17,6 +27,7 @@
       "homepage": "https://github.com/Anri2021/ipv6-advertiser",
       "license": "MIT",
       "repo": "Anri2021/ipv6-advertiser",
+      "tier": 1,
       "bin": "ipv6-advertiser.exe"
     },
     {
@@ -25,6 +36,7 @@
       "homepage": "https://github.com/Anri2021/ddns-dynu",
       "license": "MIT",
       "repo": "Anri2021/ddns-dynu",
+      "tier": 1,
       "bin": "ddns-dynu.ps1"
     }
   ]

@@ -81,7 +81,7 @@ foreach ($tier in $tiers) {
 
     function Invoke-Checked {
       param([string]$File, [string[]]$Arguments)
-      & $File @Arguments
+      & $File @Arguments | Out-Host
       if ($LASTEXITCODE -ne 0) { throw "'$File' exited with code $LASTEXITCODE." }
     }
 

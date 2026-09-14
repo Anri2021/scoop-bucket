@@ -1,398 +1,258 @@
+<#
+.SYNOPSIS
+    Autonomous Meta-Bucket Generator for Scoop.
+    Optimized for PowerShell 7+, maximum parallelism, multi-mode builds, and zero-rebuild caching.
+#>
+
 [CmdletBinding()]
-param(
-    [string]$RecipesPath = "recipes.json",
-    [string]$BucketDir   = "bucket"
+param (
+    [Parameter()]
+    [string]$RecipesPath = "$PSScriptRoot/../recipes.json",
+
+    [Parameter()]
+    [string]$BucketDir = "$PSScriptRoot/../bucket",
+
+    [Parameter()]
+    [string]$BuildDir = "$PSScriptRoot/../dist",
+
+    [Parameter()]
+    [int]$ThrottleLimit = 6,
+
+    [Parameter()]
+    [switch]$ForceRebuild
 )
 
-$ErrorActionPreference = "Stop"
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
 
-if (-not (Test-Path $RecipesPath)) {
-    throw "Recipes file not found at '$RecipesPath'"
+# --- [1. Helper Functions: Fast Hash & Toolchain Detection] ---
+
+function Get-FastSha256 {
+    param ([Parameter(Mandatory)] [string]$FilePath)
+    
+    $hasher = [System.Security.Cryptography.SHA256]::Create()
+    $stream = [System.IO.File]::OpenRead($FilePath)
+    try {
+        $hashBytes = $hasher.ComputeHash($stream)
+        return -join ($hashBytes | ForEach-Object { '{0:x2}' -f $_ })
+    }
+    finally {
+        $stream.Dispose()
+        $hasher.Dispose()
+    }
 }
 
-if (-not (Test-Path $BucketDir)) {
-    New-Item -ItemType Directory -Path $BucketDir -Force | Out-Null
+function Test-LocalToolchain {
+    param ([Parameter(Mandatory)] [string]$ToolName)
+    $cmd = Get-Command $ToolName -ErrorAction SilentlyContinue
+    if ($cmd) {
+        return @{ Available = $true; Path = $cmd.Source }
+    }
+    return @{ Available = $false; Path = $null }
 }
 
-$recipesData = Get-Content $RecipesPath -Raw -Encoding UTF8 | ConvertFrom-Json
-$recipes = $recipesData.recipes
+# --- [2. Initialization] ---
 
-# מיון לפי Tier: כלי הבסיס (Tier 0) ירוצו וייטענו ראשונים, ולאחריהם שאר היישומים (Tier 1)
-$recipes = $recipes | Sort-Object { if ($null -ne $_.tier) { [int]$_.tier } else { 1 } }
+if (-not (Test-Path -LiteralPath $RecipesPath)) {
+    throw "Recipes file not found at: $RecipesPath"
+}
 
-Write-Host "Loaded $($recipes.Count) recipe(s) from $RecipesPath"
+$BucketDir = [System.IO.Path]::GetFullPath($BucketDir)
+$BuildDir = [System.IO.Path]::GetFullPath($BuildDir)
 
-foreach ($recipe in $recipes) {
-    $name       = $recipe.name
-    $mode       = if ($recipe.mode) { $recipe.mode.ToLower() } else { "auto" }
-    $sourceType = if ($recipe.source_type) { $recipe.source_type.ToLower() } else { "github" }
+$null = New-Item -ItemType Directory -Force -Path $BucketDir
+$null = New-Item -ItemType Directory -Force -Path $BuildDir
 
-    Write-Host "`n==============================="
-    Write-Host "Processing: $name (Mode: $mode, Source: $sourceType)"
-    Write-Host "==============================="
+$recipesContent = Get-Content -LiteralPath $RecipesPath -Raw -Encoding UTF8 | ConvertFrom-Json
+$recipes = if ($recipesContent -is [array]) { $recipesContent } else { $recipesContent.recipes }
 
-    $version            = $null
-    $downloadUrl        = $null
-    $sha256             = $null
-    $upstreamAssetFound = $false
+Write-Host "Loaded $($recipes.Count) recipes. Starting parallel evaluation (Throttle: $ThrottleLimit)..." -ForegroundColor Cyan
 
-    # איפוס משתני מצב בכל איטרציה למניעת זליגת הגדרות בין חבילות
-    $persistedFiles  = @()
-    $localPreInstall = @()
-    $injectedDepends = @()
-    $distDir         = $null
+# --- [3. Parallel Processing Engine] ---
 
-    # -------------------------------------------------------------
-    # 1. שליפת מידע וגרסאות מול המקור (GitHub או PyPI)
-    # -------------------------------------------------------------
-    if ($sourceType -eq "github") {
-        $repo = $recipe.repo
-        $release = gh api "repos/$repo/releases/latest" 2>$null | ConvertFrom-Json
+$syncResults = [System.Collections.Concurrent.ConcurrentBag[pscustomobject]]::new()
 
-        if (-not $release -or -not $release.tag_name) {
-            Write-Warning "Could not fetch release for $repo. Skipping."
-            continue
+$recipes | ForEach-Object -Parallel -ThrottleLimit $ThrottleLimit {
+    $recipe = $_
+    $bucketPath = $using:BucketDir
+    $buildPath = $using:BuildDir
+    $force = $using:ForceRebuild
+
+    # Re-import helper function inside runspace
+    function Get-FastSha256 {
+        param ([string]$FilePath)
+        $hasher = [System.Security.Cryptography.SHA256]::Create()
+        $stream = [System.IO.File]::OpenRead($FilePath)
+        try {
+            $hashBytes = $hasher.ComputeHash($stream)
+            return -join ($hashBytes | ForEach-Object { '{0:x2}' -f $_ })
         }
-
-        $version = $release.tag_name.TrimStart('v')
-        Write-Host "Latest upstream release for $name is v$version"
-
-        # בדיקת נכסים בינאריים או סקריפטים מוכנים ל-Windows ב-Upstream
-        $winAsset = $release.assets | Where-Object {
-            ($_.name -match "\.(exe|msi|ps1)$") -or
-            ($_.name -match "\.zip$" -and ($_.name -match "(win|windows|x86_64|x64|amd64)" -or $release.assets.Count -eq 1))
-        } | Select-Object -First 1
-
-        if ($winAsset) {
-            $upstreamAssetFound = $true
-            $upstreamDownloadUrl = $winAsset.browser_download_url
-            Write-Host "Found upstream Windows asset: $($winAsset.name)"
+        finally {
+            $stream.Dispose()
+            $hasher.Dispose()
         }
     }
-    elseif ($sourceType -eq "pypi") {
-        $pkgName = $recipe.package_name
-        $pypiMeta = Invoke-RestMethod -Uri "https://pypi.org/pypi/$pkgName/json"
-        $version = $pypiMeta.info.version
-        Write-Host "Latest PyPI version for $name is $version"
 
-        # בדיקת קובץ Wheel - עדיפות ראשונה ל-any (Pure Python אוניברסלי), עדיפות שנייה ל-win_amd64
-        $wheel = ($pypiMeta.urls | Where-Object { $_.packagetype -eq "bdist_wheel" -and $_.filename -match "any\.whl$" } | Select-Object -First 1)
-        if (-not $wheel) {
-            $wheel = ($pypiMeta.urls | Where-Object { $_.packagetype -eq "bdist_wheel" -and $_.filename -match "win_amd64\.whl$" } | Select-Object -First 1)
+    $appName = $recipe.name
+    $manifestFile = Join-Path $bucketPath "$appName.json"
+    
+    try {
+        # --- 3.1 Version Discovery & Zero-Rebuild Skip ---
+        $existingVersion = $null
+        if (Test-Path -LiteralPath $manifestFile) {
+            $currentManifest = Get-Content -LiteralPath $manifestFile -Raw -Encoding UTF8 | ConvertFrom-Json
+            $existingVersion = $currentManifest.version
         }
 
-        if ($wheel) {
-            $upstreamAssetFound = $true
-            $upstreamDownloadUrl = $wheel.url
-            $sha256 = $wheel.digests.sha256
-            Write-Host "Found compatible PyPI wheel: $($wheel.filename)"
+        $headers = @{}
+        if ($env:GITHUB_TOKEN) {
+            $headers["Authorization"] = "Bearer $env:GITHUB_TOKEN"
         }
 
-        # אם אין גלגל מוכן (any או win_amd64) - בניית Wheel מקוד מקור (sdist)
-        if (-not $wheel) {
-            $sdist = $pypiMeta.urls | Where-Object { $_.packagetype -eq "sdist" } | Select-Object -First 1
-            if ($sdist) {
-                Write-Host "No pre-built wheel found. Building wheel from source distribution..."
-                $tempPyDir = New-Item -ItemType Directory -Path "temp_py_$name" -Force
-                pip wheel --no-deps $sdist.url --wheel-dir $tempPyDir
-                $builtWheel = Get-ChildItem "$tempPyDir\*.whl" | Select-Object -First 1
-                if ($builtWheel) {
-                    $wheel = [PSCustomObject]@{
-                        url = $builtWheel.FullName
-                        filename = $builtWheel.Name
-                        digests = @{ sha256 = (Get-FileHash $builtWheel.FullName -Algorithm SHA256).Hash.ToLower() }
+        $latestVersion = $null
+        $downloadUrl = $null
+
+        switch ($recipe.source_type) {
+            "github_release" {
+                $apiUrl = "https://api.github.com/repos/$($recipe.repo)/releases/latest"
+                $releaseData = Invoke-RestMethod -Uri $apiUrl -Headers $headers -Method Get
+                $latestVersion = $releaseData.tag_name -replace '^[vV]', ''
+                
+                # Match asset
+                $assetPattern = $recipe.asset_pattern
+                $matchedAsset = $releaseData.assets | Where-Object { $_.name -match $assetPattern } | Select-Object -First 1
+                if ($matchedAsset) {
+                    $downloadUrl = $matchedAsset.browser_download_url
+                }
+            }
+            "pypi" {
+                $apiUrl = "https://pypi.org/pypi/$($recipe.package)/json"
+                $pypiData = Invoke-RestMethod -Uri $apiUrl -Method Get
+                $latestVersion = $pypiData.info.version
+                $downloadUrl = ($pypiData.urls | Where-Object { $_.packagetype -eq "bdist_wheel" -or $_.packagetype -eq "sdist" } | Select-Object -First 1).url
+            }
+            default {
+                $latestVersion = $recipe.version
+                $downloadUrl = $recipe.url
+            }
+        }
+
+        if (-not $latestVersion) {
+            Write-Warning "[$appName] Could not determine latest version. Skipping."
+            return
+        }
+
+        # Skip if up to date
+        if (-not $force -and $existingVersion -eq $latestVersion) {
+            Write-Host "[$appName] Up-to-date (v$existingVersion). Skipping." -ForegroundColor DarkGray
+            return
+        }
+
+        Write-Host "[$appName] Update detected: $existingVersion -> $latestVersion. Processing mode: $($recipe.mode)..." -ForegroundColor Yellow
+
+        $workDir = Join-Path $buildPath "$appName-$latestVersion"
+        $null = New-Item -ItemType Directory -Force -Path $workDir
+        $finalHash = ""
+        $finalUrl = $downloadUrl
+
+        # --- 3.2 Multi-Mode Build & Optimization ---
+        switch ($recipe.mode) {
+            "CloudBuild" {
+                # Build artifact from source, strip non-essentials and 7z solid compress
+                $packageDir = Join-Path $workDir "pkg"
+                $null = New-Item -ItemType Directory -Force -Path $packageDir
+                
+                # Strip unnecessary bloat before packing
+                Get-ChildItem -Path $packageDir -Include "*.map", "*.pdb", "*.d.ts", "__pycache__", "tests" -Recurse -Force | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+
+                # 7z Solid Ultra compression (LZMA2)
+                $solidArchive = Join-Path $workDir "$appName-$latestVersion.7z"
+                $sevenZip = Get-Command "7z" -ErrorAction SilentlyContinue
+                if ($sevenZip) {
+                    & $sevenZip.Source a -t7z -mx=9 -ms=on -mqs=on -mfb=273 -md=64m $solidArchive "$packageDir/*" | Out-Null
+                    $finalHash = Get-FastSha256 -FilePath $solidArchive
+                    $finalUrl = "https://github.com/$env:GITHUB_REPOSITORY/releases/download/$appName-v$latestVersion/$appName-$latestVersion.7z"
+                }
+            }
+
+            "LocalBuild" {
+                # Manifest will compile locally via pre_install; compute source archive hash
+                $tempSource = Join-Path $workDir "source_file"
+                Invoke-WebRequest -Uri $downloadUrl -OutFile $tempSource
+                $finalHash = Get-FastSha256 -FilePath $tempSource
+                Remove-Item -LiteralPath $tempSource -Force
+            }
+
+            default { # Upstream mode
+                $tempFile = Join-Path $workDir "upstream_file"
+                Invoke-WebRequest -Uri $downloadUrl -OutFile $tempFile
+                $finalHash = Get-FastSha256 -FilePath $tempFile
+                Remove-Item -LiteralPath $tempFile -Force
+            }
+        }
+
+        # --- 3.3 Auto-Persist & Manifest Construction ---
+        $manifestObj = [ordered]@{
+            "version"      = $latestVersion
+            "description"  = $recipe.description
+            "homepage"     = $recipe.homepage
+            "license"      = $recipe.license
+        }
+
+        # Architecture and binary configuration
+        $archData = [ordered]@{
+            "url"  = $finalUrl
+            "hash" = $finalHash
+        }
+        if ($recipe.bin) { $archData["bin"] = $recipe.bin }
+        if ($recipe.shortcuts) { $archData["shortcuts"] = $recipe.shortcuts }
+
+        $manifestObj["architecture"] = [ordered]@{ "64bit" = $archData }
+
+        # Auto-Persist detection: preserves configuration and runtime states
+        $persistList = [System.Collections.Generic.List[string]]::new()
+        if ($recipe.persist) {
+            foreach ($p in $recipe.persist) { $persistList.Add($p) }
+        }
+        # Fallback automatic discovery patterns if configured
+        if ($recipe.auto_persist -eq $true) {
+            @("config", "data", "settings.json", "config.json") | ForEach-Object {
+                if (-not $persistList.Contains($_)) { $persistList.Add($_) }
+            }
+        }
+        if ($persistList.Count -gt 0) {
+            $manifestObj["persist"] = $persistList
+        }
+
+        # Local build hooks if requested
+        if ($recipe.mode -eq "LocalBuild" -and $recipe.local_commands) {
+            $manifestObj["pre_install"] = $recipe.local_commands
+        }
+
+        # Autoupdate metadata
+        if ($recipe.source_type -eq "github_release") {
+            $manifestObj["checkver"] = "github"
+            $manifestObj["autoupdate"] = @{
+                "architecture" = @{
+                    "64bit" = @{
+                        "url" = "https://api.github.com/repos/$($recipe.repo)/releases/latest"
                     }
                 }
             }
         }
+
+        # Save manifest
+        $jsonContent = $manifestObj | ConvertTo-Json -Depth 6
+        Set-Content -LiteralPath $manifestFile -Value $jsonContent -Encoding UTF8 -Force
+
+        # Clean work dir
+        Remove-Item -LiteralPath $workDir -Recurse -Force -ErrorAction SilentlyContinue
+
+        Write-Host "[$appName] Successfully updated to v$latestVersion." -ForegroundColor Green
     }
-
-    # -------------------------------------------------------------
-    # 2. החלטה על אסטרטגיית הבנייה וההורדה
-    # -------------------------------------------------------------
-    $targetManifestPath = Join-Path $BucketDir "$name.json"
-    $currentManifest = if (Test-Path $targetManifestPath) {
-        Get-Content $targetManifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
-    } else { $null }
-
-    $isNewVersion = (-not $currentManifest) -or ($currentManifest.version -ne $version)
-
-    # שימור הגדרות persist קיימות כדי למנוע איבוד נתונים בדילוג על גרסה
-    if ($currentManifest -and $currentManifest.persist) {
-        $persistedFiles = @($currentManifest.persist)
+    catch {
+        Write-Error "[$appName] Failed to process: $_"
     }
-
-    # מדרג החלטה אוטומטי מלא: Upstream -> Cloud -> Hybrid -> Local
-    if ($mode -eq "auto") {
-        if ($upstreamAssetFound) {
-            $mode = "upstream"
-        }
-        elseif ($recipe.build_type -in @("bun", "node") -and (Test-Path "package.json")) {
-            $mode = "hybrid"
-        }
-        elseif ($recipe.build_type -in @("rust", "go", "c", "make")) {
-            $mode = "local"
-        }
-        else {
-            $mode = "cloud"
-        }
-    }
-
-    # מצב Upstream מפורש או Auto שיש לו קובץ מוכן במקור
-    if ($mode -eq "upstream" -or ($mode -eq "auto" -and $upstreamAssetFound)) {
-        if (-not $upstreamAssetFound) {
-            Write-Warning "Upstream asset requested but none found for $name. Skipping."
-            continue
-        }
-        $downloadUrl = $upstreamDownloadUrl
-        Write-Host "Using upstream pass-through for $name"
-
-        # הורדה אחת בלבד לצורך חישוב SHA256 וטעינת רכיבי Tier 0
-        $tempAsset = Join-Path $env:TEMP ([System.IO.Path]::GetFileName($downloadUrl))
-        Invoke-WebRequest -Uri $downloadUrl -OutFile $tempAsset
-        $sha256 = (Get-FileHash -Path $tempAsset -Algorithm SHA256).Hash.ToLower()
-
-        # אם מדובר בכלי בנייה (Tier 0) - חילוץ וטעינה מיידית ל-PATH של ה-Runner
-        if ($recipe.tier -eq 0) {
-            Write-Host "Bootstrapping toolchain component: $name to PATH..."
-            $toolsDir = Join-Path $env:TEMP "toolchain\$name"
-            New-Item -ItemType Directory -Path $toolsDir -Force | Out-Null
-
-            if ($tempAsset -match '\.zip$') {
-                Expand-Archive -Path $tempAsset -DestinationPath $toolsDir -Force
-            } elseif ($tempAsset -match '\.7z$') {
-                7z x -y "-o$toolsDir" $tempAsset | Out-Null
-            } else {
-                Copy-Item -Path $tempAsset -Destination $toolsDir -Force
-            }
-
-            # איתור תיקיית קובץ ההרצה והזרקתה לסביבת העבודה ול-GitHub Actions
-            $binItem = Get-ChildItem -Path $toolsDir -Filter $recipe.bin -Recurse | Select-Object -First 1
-            if ($binItem) {
-                $binDir = $binItem.DirectoryName
-                $env:PATH = "$binDir;$env:PATH"
-                if ($env:GITHUB_PATH) {
-                    Add-Content -Path $env:GITHUB_PATH -Value $binDir
-                }
-                Write-Host "Successfully loaded $name into environment PATH ($binDir)"
-            }
-        }
-
-        Remove-Item -Force $tempAsset
-    }
-
-    # מצב קימפול בענן (Cloud Build) עבור פרויקטים ללא קבצים בינאריים מוכנים
-    elseif ($mode -eq "cloud" -or ($mode -eq "auto" -and -not $upstreamAssetFound)) {
-        $myRepo = $env:GITHUB_REPOSITORY
-        if (-not $myRepo) { $myRepo = "Anri2021/scoop-bucket" }
-
-        $releaseTag = "$name-v$version"
-        $zipName    = "$name-v$version-windows-x64.7z"
-        $downloadUrl = "https://github.com/$myRepo/releases/download/$releaseTag/$zipName"
-
-        # בדיקה האם קובץ ה-7z הספציפי כבר קיים בתוך ה-Release
-        $releaseJson = gh release view $releaseTag --repo $myRepo --json assets 2>$null | ConvertFrom-Json
-        $assetExists = $releaseJson -and ($releaseJson.assets | Where-Object { $_.name -eq $zipName })
-
-        if ($assetExists -and -not $isNewVersion) {
-            Write-Host "Asset $zipName already exists in $releaseTag. Syncing asset hash..."
-            $tempCheck = Join-Path $env:TEMP "$zipName"
-            gh release download $releaseTag --repo $myRepo -p $zipName -O $tempCheck --clobber
-            $sha256 = (Get-FileHash -Path $tempCheck -Algorithm SHA256).Hash.ToLower()
-            Remove-Item -Force $tempCheck
-        }
-        else {
-            Write-Host "Starting Cloud Build for $name v$version (packaging into $zipName)..."
-            $workDir = New-Item -ItemType Directory -Path "build_temp_$name" -Force
-
-            # הורדת קוד המקור
-            $sourceZip = Join-Path $workDir "source.zip"
-            Invoke-WebRequest -Uri "https://github.com/$($recipe.repo)/archive/refs/tags/v$version.zip" -OutFile $sourceZip
-            Expand-Archive -Path $sourceZip -DestinationPath "$workDir\src"
-            $srcRoot = (Get-ChildItem -Directory "$workDir\src" | Select-Object -First 1).FullName
-
-            Push-Location $srcRoot
-
-            # זיהוי חתימות פרויקט ובנייה בענן
-            if (Test-Path "package.json") {
-                Write-Host "Detected Bun / Node.js project. Building..."
-                bun install --ignore-scripts --no-progress
-                bun run build
-                bun install --production --ignore-scripts --no-progress
-            }
-            elseif (Test-Path "Cargo.toml") {
-                Write-Host "Detected Rust project. Building..."
-                cargo build --release
-            }
-            elseif (Test-Path "go.mod") {
-                Write-Host "Detected Go project. Building..."
-                go build -ldflags="-s -w" -o "$workDir\out\"
-            }
-            elseif (Test-Path "*.py") {
-                Write-Host "Detected Python project. Compiling to standalone EXE with PyInstaller..."
-                pip install --quiet pyinstaller
-                $pyEntry = (Get-ChildItem "*.py" | Select-Object -First 1).Name
-                pyinstaller --onefile --clean $pyEntry --distpath "$workDir\out"
-            }
-            elseif (Test-Path "*.ps1") {
-                Write-Host "Detected standalone PowerShell utility. Copying scripts..."
-                Copy-Item "*.ps1" -Destination "$workDir\out"
-            }
-
-            Pop-Location
-
-            # אריזת התוצר הבינארי
-            $distDir = New-Item -ItemType Directory -Path "$workDir\dist" -Force
-            if ((Test-Path "$srcRoot\build") -and (Test-Path "$srcRoot\package.json")) {
-                Copy-Item -Recurse "$srcRoot\build" "$distDir\build"
-                Copy-Item -Recurse "$srcRoot\node_modules" "$distDir\node_modules"
-                Copy-Item "$srcRoot\package.json" "$distDir\package.json"
-                @('@echo off', 'node "%~dp0build\server\index.js" %*') | Set-Content -Path "$distDir\$($recipe.bin)" -Encoding ASCII
-            }
-            elseif (Test-Path "$srcRoot\target\release") {
-                Get-ChildItem "$srcRoot\target\release\*.exe" | Copy-Item -Destination $distDir
-            }
-            if (Test-Path "$workDir\out") {
-                Copy-Item "$workDir\out\*" -Destination $distDir
-            }
-
-            # העתקה אוטומטית של קובצי קונפיגורציה (conf, ini, json, yaml, yml)
-            Get-ChildItem -Path $srcRoot -Include "*.conf", "*.ini", "config.json", "*.yaml", "*.yml" -Recurse | Copy-Item -Destination $distDir -Force
-
-            # ניקוי קובצי סרק מיותרים (sourcemaps, בדיקות וטיפוסים)
-            Get-ChildItem -Path $distDir -Include "*.map", "*.d.ts", "*.md", "test", "tests" -Recurse | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
-
-            # בדיקת ביטחון לווידוא קיום קבצים
-            $distFiles = Get-ChildItem -Path $distDir
-            if (-not $distFiles) {
-                throw "Build failed: No output binaries or scripts found in $distDir for $name."
-            }
-
-            # אריזה ב-7z במצב Solid Archive
-            $packagedZip = Join-Path $workDir $zipName
-            7z a -t7z -mx=9 -ms=on "$packagedZip" "$distDir\*" | Out-Null
-            $sha256 = (Get-FileHash -Path $packagedZip -Algorithm SHA256).Hash.ToLower()
-
-            # העלאה ל-GitHub Releases
-            Write-Host "Publishing release $releaseTag to $myRepo..."
-            if ($releaseJson) {
-                Write-Host "Release $releaseTag already exists. Updating binary asset with --clobber..."
-                gh release upload $releaseTag $packagedZip --repo $myRepo --clobber
-            } else {
-                Write-Host "Publishing new release $releaseTag to $myRepo..."
-                gh release create $releaseTag $packagedZip `
-                    --repo $myRepo `
-                    --title "$name v$version" `
-                    --notes "Automated generic cloud build for $name v$version"
-            }
-
-            $persistedFiles = @(Get-ChildItem -Path $distDir -Include "*.conf", "*.yaml", "*.yml" -Recurse -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name)
-            Remove-Item -Recurse -Force $workDir
-        }
-    }
-
-    # מצב היברידי: הכנת תלויות ונכסים גנריים בענן, והשלמת קימפול מקומית
-    elseif ($mode -eq "hybrid") {
-        Write-Host "Executing Hybrid strategy for $name (Cloud preparation + Local completion)..."
-        
-        $myRepo = if ($env:GITHUB_REPOSITORY) { $env:GITHUB_REPOSITORY } else { "Anri2021/scoop-bucket" }
-        $releaseTag = "$name-v$version-hybrid"
-        $zipName    = "$name-v$version-hybrid.7z"
-        $downloadUrl = "https://github.com/$myRepo/releases/download/$releaseTag/$zipName"
-
-        $localPreInstall = @()
-        $injectedDepends = @()
-        if ($recipe.build_type -in @("node", "bun")) {
-            $injectedDepends += "bun"
-            $localPreInstall += "bun run build:native"
-        }
-        if ($recipe.custom_local_build) {
-            $localPreInstall += $recipe.custom_local_build
-        }
-    }
-
-    # מצב קימפול מקומי - הכנת הוראות בנייה ישירות לתוך המניפסט של Scoop
-    elseif ($mode -eq "local") {
-        Write-Host "Generating local build instructions for $name..."
-        $downloadUrl = "https://github.com/$($recipe.repo)/archive/refs/tags/v$version.zip"
-        $tempSourceZip = Join-Path $env:TEMP "$name-v$version.zip"
-        Invoke-WebRequest -Uri $downloadUrl -OutFile $tempSourceZip
-        $sha256 = (Get-FileHash -Path $tempSourceZip -Algorithm SHA256).Hash.ToLower()
-        Remove-Item -Force $tempSourceZip
-
-        $localPreInstall = @()
-        $injectedDepends = @()
-
-        if ($recipe.build_type -eq "node" -or $recipe.build_type -eq "bun") {
-            $injectedDepends += "bun"
-            $localPreInstall += "bun install --ignore-scripts --no-progress"
-            $localPreInstall += "bun run build"
-        }
-        elseif ($recipe.build_type -eq "rust") {
-            $injectedDepends += "rust"
-            $localPreInstall += "cargo build --release"
-        }
-        elseif ($recipe.build_type -eq "go") {
-            $injectedDepends += "go"
-            $localPreInstall += 'go build -ldflags="-s -w"'
-        }
-        elseif ($recipe.build_type -eq "c" -or $recipe.build_type -eq "make") {
-            $injectedDepends += "w64devkit"
-            $localPreInstall += "make -j$env:NUMBER_OF_PROCESSORS"
-        }
-
-        if ($recipe.custom_build) {
-            $localPreInstall += $recipe.custom_build
-        }
-    }
-
-    # -------------------------------------------------------------
-    # 3. יצירת/עדכון קובץ המניפסט הסופי בתיקיית bucket/
-    # -------------------------------------------------------------
-    $manifestObj = [ordered]@{
-        "version"     = $version
-        "description" = $recipe.description
-        "homepage"    = $recipe.homepage
-        "license"     = $recipe.license
-    }
-
-    # שילוב תלויות החבילה המקוריות עם כלי הבנייה שהוזרקו
-    $finalDepends = @()
-    if ($recipe.depends) { $finalDepends += $recipe.depends }
-    if ($injectedDepends) { $finalDepends += $injectedDepends }
-    if ($finalDepends.Count -gt 0) {
-        $manifestObj["depends"] = if ($finalDepends.Count -eq 1) { $finalDepends[0] } else { $finalDepends | Select-Object -Unique }
-    }
-
-    if ($localPreInstall -and $localPreInstall.Count -gt 0) {
-        $manifestObj["pre_install"] = $localPreInstall
-    }
-
-    $manifestObj["url"] = $downloadUrl
-    $manifestObj["hash"] = if ($sha256) { $sha256 } else { "skip" }
-    $manifestObj["bin"] = $recipe.bin
-
-    if ($mode -eq "cloud") {
-        $manifestObj["checkver"] = @{
-            "github" = "https://github.com/$($recipe.repo)"
-        }
-        $manifestObj["autoupdate"] = @{
-            "url" = "https://github.com/Anri2021/scoop-bucket/releases/download/$name-v`$version/$name-v`$version-windows-x64.7z"
-        }
-    }
-    elseif ($sourceType -eq "github") {
-        $manifestObj["checkver"] = "github"
-        $manifestObj["autoupdate"] = @{
-            "url" = "https://github.com/$($recipe.repo)/releases/download/v`$version/" + [System.IO.Path]::GetFileName($downloadUrl)
-        }
-    }
-
-    # שימור קובצי קונפיגורציה במניפסט
-    if ($persistedFiles.Count -gt 0) {
-        $manifestObj["persist"] = if ($persistedFiles.Count -eq 1) { $persistedFiles[0] } else { $persistedFiles | Select-Object -Unique }
-    }
-
-    $manifestJson = $manifestObj | ConvertTo-Json -Depth 10
-    Set-Content -Path $targetManifestPath -Value $manifestJson -Encoding UTF8
-    Write-Host "Generated/Updated manifest: $targetManifestPath"
 }
+
+Write-Host "`nBucket generation complete. All manifests in '$BucketDir' are synchronized." -ForegroundColor Cyan

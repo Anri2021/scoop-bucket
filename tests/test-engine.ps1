@@ -9,7 +9,8 @@ function Assert-True {
   if(-not $Condition){throw "Assertion failed: $Message"}
 }
 
-$recipesPath=Join-Path $RepositoryRoot "recipes.json"
+$sourceRecipesPath=Join-Path $RepositoryRoot "recipes.json"
+$recipesPath=$sourceRecipesPath
 $schemaPath=Join-Path $RepositoryRoot "schemas/recipes.schema.json"
 $enginePath=Join-Path $RepositoryRoot "scripts/generate-bucket.ps1"
 $recipesJson=Get-Content $recipesPath -Raw -Encoding utf8
@@ -20,6 +21,8 @@ $bucket=Join-Path $temp "bucket"
 $stage=Join-Path $temp "stage"
 $plan=Join-Path $temp "plan.json"
 $null=New-Item -ItemType Directory -Force -Path $stage
+$recipesPath=Join-Path $temp "recipes.json"
+Copy-Item -LiteralPath $sourceRecipesPath -Destination $recipesPath
 try{
   $hash="0"*64
   $plans=@(
@@ -61,7 +64,6 @@ try{
   Assert-True (@($hybrid.pre_install).Count-ge3) "hybrid manifest must complete locally"
   Assert-True ($upstream.url-eq"https://example.invalid/tool.zip") "upstream must remain pass-through"
 
-  $lockPath=Join-Path $RepositoryRoot "recipes.lock.json"
   $generatedLock=Join-Path (Split-Path $recipesPath -Parent) "recipes.lock.json"
   $first=(Get-FileHash $generatedLock -Algorithm SHA256).Hash
   & $enginePath -Phase Finalize -RecipesPath $recipesPath -PlanPath $plan -StageDir $stage -BucketDir $bucket -NoPublish

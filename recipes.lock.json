@@ -1,0 +1,38 @@
+{
+  "engine_version": "3.0",
+  "recipes_sha256": "9b6beb1cde47b1c44d392e1a0473c1507d0f9f4e91a9334cba11fa6956785cfb",
+  "packages": {
+    "bun": {
+      "version": "1.4.2",
+      "tag": "bun-v1.4.2",
+      "mode": "upstream",
+      "reason": "explicit:upstream",
+      "fingerprint": "cca17f10e9b72255ff628f1903f28f03b9f54191f05a83ef92385daef1f0daab",
+      "artifact": "bun-1.4.2-cca17f10e9b7-windows-x64.7z"
+    },
+    "ddns-dynu": {
+      "version": "1.0.2",
+      "tag": "v1.0.2",
+      "mode": "upstream",
+      "reason": "explicit:upstream",
+      "fingerprint": "3be2df2a8eaec1a22af5277e1ab5eaeb58d16aefb10e1fdbb80817755158c2b9",
+      "artifact": "ddns-dynu-1.0.2-3be2df2a8eae-windows-x64.7z"
+    },
+    "headplane": {
+      "version": "0.7.1",
+      "tag": "v0.7.1",
+      "mode": "cloud",
+      "reason": "explicit:cloud",
+      "fingerprint": "371a836db31b620da385513d5abad5dee6dbef2e0a67b44d435c14a00c3c3565",
+      "artifact": "headplane-0.7.1-371a836db31b-windows-x64.7z"
+    },
+    "ipv6-advertiser": {
+      "version": "1.0.2",
+      "tag": "v1.0.2",
+      "mode": "cloud",
+      "reason": "explicit:cloud",
+      "fingerprint": "6c3240e0ef2e1de5b40321a1b21c9dfc185a8fcf8bc2f5d5a617336ac6925642",
+      "artifact": "ipv6-advertiser-1.0.2-6c3240e0ef2e-windows-x64.7z"
+    }
+  }
+}

@@ -5,6 +5,7 @@
   "type": "object",
   "required": [ "recipes" ],
   "properties": {
+    "$schema": { "type": "string", "format": "uri" },
     "engine": {
       "type": "object",
       "properties": {
@@ -63,9 +64,9 @@
         "compression_level": { "type": "integer", "minimum": 1, "maximum": 9, "default": 7 }
       },
       "allOf": [
-        { "if": { "properties": { "source_type": { "const": "github" } } }, "then": { "required": [ "repo" ] } },
-        { "if": { "properties": { "source_type": { "const": "pypi" } } }, "then": { "required": [ "package" ] } },
-        { "if": { "properties": { "mode": { "enum": [ "cloud", "hybrid", "local" ] } } }, "then": { "required": [ "build_type" ] } }
+        { "if": { "required": [ "source_type" ], "properties": { "source_type": { "const": "github" } } }, "then": { "required": [ "repo" ] } },
+        { "if": { "required": [ "source_type" ], "properties": { "source_type": { "const": "pypi" } } }, "then": { "required": [ "package" ] } },
+        { "if": { "required": [ "mode" ], "properties": { "mode": { "enum": [ "cloud", "hybrid", "local" ] } } }, "then": { "required": [ "build_type" ] } }
       ],
       "additionalProperties": false
     }

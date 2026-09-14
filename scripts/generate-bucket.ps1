@@ -251,7 +251,7 @@ foreach ($recipe in $recipes) {
         }
         elseif ($recipe.build_type -eq "go") {
             $injectedDepends += "go"
-            $localPreInstall += "go build -ldflags=\"-s -w\""
+            $localPreInstall += 'go build -ldflags="-s -w"'
         }
         elseif ($recipe.build_type -eq "c" -or $recipe.build_type -eq "make") {
             $injectedDepends += "w64devkit"

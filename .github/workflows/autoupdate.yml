@@ -30,5 +30,6 @@ jobs:
           git add .
           if (-not (git diff --staged --quiet)) {
               git commit -m "Auto-update manifests via official checkver"
+              git pull --rebase origin main
               git push
           }

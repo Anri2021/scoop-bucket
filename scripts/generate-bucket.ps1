@@ -189,6 +189,11 @@ function Resolve-Plans {
       elseif($native){$mode="hybrid";$reason="portable-preparation-plus-native-completion"}
       else{$mode="cloud";$reason="portable-cloud-build"}
       if($mode-eq"upstream"-and-not$primary){throw "Upstream mode has no compatible asset."}
+      if($mode-eq"local"-and-not$sourceHash){
+        $sourceCache=Join-Path $cacheRoot ("local-source-"+(TextHash $sourceUrl))
+        $null=Cached $sourceUrl $sourceCache
+        $sourceHash=FileHash $sourceCache
+      }
 
       $upstreamUrls=[Collections.Generic.List[string]]::new();$upstreamHashes=[Collections.Generic.List[string]]::new()
       if($mode-eq"upstream"){
@@ -312,18 +317,21 @@ function Invoke-BuildPhase {
   $levels=Get-DependencyLevels @($Plans|ForEach-Object{$_.recipe})
   $byName=@{};foreach($plan in $Plans){$byName[$plan.name]=$plan}
   $stageRoot=[IO.Path]::GetFullPath($StageDir);$null=New-Item -ItemType Directory -Force -Path $stageRoot
+  $requiredToolNames=@($Plans|Where-Object needs_build|ForEach-Object{@(Get-Prop $_.recipe "tool_dependencies" @())}|Sort-Object -Unique)
   $all=[Collections.Generic.List[object]]::new()
   foreach($level in $levels){
     $levelPlans=@($level|ForEach-Object{$byName[$_]})
     $results=@($levelPlans|ForEach-Object -Parallel {
-      $plan=$_;$stageRoot=$using:stageRoot;$cacheRoot=[IO.Path]::GetFullPath($using:CacheDir);$throttle=$using:ThrottleLimit
+      $plan=$_;$stageRoot=$using:stageRoot;$cacheRoot=[IO.Path]::GetFullPath($using:CacheDir);$throttle=$using:ThrottleLimit;$requiredToolNames=$using:requiredToolNames
       function Prop{param([object]$o,[string]$n,$d=$null);$p=$o.PSObject.Properties[$n];if($null-eq$p-or$null-eq$p.Value){return $d};return $p.Value}
       function Hash{param([string]$p);$s=[IO.File]::OpenRead($p);try{return [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($s)).ToLowerInvariant()}finally{$s.Dispose()}}
       function Cmd{param([string]$f,[string[]]$a);&$f @a 2>&1|Out-Host;if($LASTEXITCODE-ne0){throw "'$f' failed: $LASTEXITCODE"}}
       function Cache{param([string]$u,[string]$p,[string]$h="");if(Test-Path $p){$a=Hash $p;if(-not$h-or$a-eq$h){return $p};Remove-Item $p -Force};$null=New-Item -ItemType Directory -Force -Path ([IO.Path]::GetDirectoryName($p));Invoke-WebRequest $u -OutFile $p -UseBasicParsing;if($h-and(Hash $p)-ne$h){throw "Hash mismatch"};return $p}
       $work=Join-Path $stageRoot ("work-"+$plan.name+"-"+$plan.fingerprint.Substring(0,8))
       try{
-        $bootstrap=[bool](Prop $plan.recipe "toolchain" (Prop $plan.recipe "bootstrap" $false))
+        $isToolchain=[bool](Prop $plan.recipe "toolchain" (Prop $plan.recipe "bootstrap" $false))
+        $bootstrap=($requiredToolNames-contains[string]$plan.name)
+        if($bootstrap-and-not$isToolchain){throw "Required build tool '$($plan.name)' is not marked as a toolchain."}
         $bootstrapPath=""
         if($bootstrap-and$plan.mode-eq"upstream"){
           $toolRoot=Join-Path $cacheRoot ("toolchain\"+$plan.name+"\"+$plan.version)

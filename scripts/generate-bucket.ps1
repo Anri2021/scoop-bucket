@@ -428,7 +428,7 @@ function Get-LocalCommands {
     default{throw "Local/hybrid recipe '$name' requires build_type or local_commands."}
   }
   if($bin){$commands.Add(('if (-not (Test-Path -LiteralPath "$dir\{0}")) { throw "Expected output {0} was not produced." }' -f $bin))}
-  return@($commands)
+  return @($commands)
 }
 
 function Get-ToolDepends {
@@ -440,7 +440,7 @@ function Get-ToolDepends {
     $tool=switch(([string](Get-Prop $Plan.recipe "build_type" "")).ToLowerInvariant()){"python"{"python"};"go"{"go"};"rust"{"rust"};"node"{"nodejs"};"bun"{"bun"};default{$null}}
     if($tool){$null=$set.Add($tool)}
   }
-  return@($set|Sort-Object)
+  return @($set|Sort-Object)
 }
 
 function Invoke-FinalizePhase {

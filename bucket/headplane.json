@@ -4,9 +4,11 @@
     "homepage": "https://github.com/tale/headplane",
     "license": "AGPL-3.0-only",
     "depends": "nodejs-lts",
-    "url": "https://github.com/tale/headplane/archive/refs/tags/v0.7.1.zip",
-    "hash": "a2fb3a13ca1811b07d2b9f071f0a7e3686497db2e7c3c56208a7f45610486222",
-    "post_install": [
+    "url": "https://github.com/tale/headplane/archive/refs/tags/v0.7.1.zip#/headplane.dl",
+    "hash": "skip",
+    "pre_install": [
+        "tar -xf \"$dir\\headplane.dl\" -C \"$dir\" --strip-components=1",
+        "Remove-Item \"$dir\\headplane.dl\" -Force -ErrorAction SilentlyContinue",
         "Push-Location \"$dir\"",
         "npm install --no-audit --no-fund",
         "npm run build",
@@ -17,6 +19,6 @@
     "bin": "headplane.cmd",
     "checkver": "github",
     "autoupdate": {
-        "url": "https://github.com/tale/headplane/archive/refs/tags/v$version.zip"
+        "url": "https://github.com/tale/headplane/archive/refs/tags/v$version.zip#/headplane.dl"
     }
 }

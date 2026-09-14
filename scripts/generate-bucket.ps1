@@ -17,6 +17,9 @@ if (-not (Test-Path $BucketDir)) {
 $recipesData = Get-Content $RecipesPath -Raw -Encoding UTF8 | ConvertFrom-Json
 $recipes = $recipesData.recipes
 
+# מיון לפי Tier: כלי הבסיס (Tier 0) ירוצו וייטענו ראשונים, ולאחריהם שאר היישומים (Tier 1)
+$recipes = $recipes | Sort-Object { if ($null -ne $_.tier) { [int]$_.tier } else { 1 } }
+
 Write-Host "Loaded $($recipes.Count) recipe(s) from $RecipesPath"
 
 foreach ($recipe in $recipes) {
@@ -144,6 +147,27 @@ foreach ($recipe in $recipes) {
             $sha256 = (Get-FileHash -Path $tempAsset -Algorithm SHA256).Hash.ToLower()
             Remove-Item -Force $tempAsset
         }
+        # אם מדובר בכלי בנייה (Tier 0) - חילוץ וטעינה מיידית ל-PATH של הריצה
+    if ($recipe.tier -eq 0) {
+        Write-Host "Bootstrapping toolchain component: $name to PATH..."
+        $toolsDir = Join-Path $env:TEMP "toolchain\$name"
+        New-Item -ItemType Directory -Path $toolsDir -Force | Out-Null
+
+        $toolZip = Join-Path $env:TEMP "$name-tool.zip"
+        Invoke-WebRequest -Uri $downloadUrl -OutFile $toolZip
+        Expand-Archive -Path $toolZip -DestinationPath $toolsDir -Force
+        Remove-Item -Force $toolZip
+
+        # איתור תיקיית הבינארי והוספה ל-PATH הנוכחי ול-GitHub Actions PATH
+        $binDir = (Get-ChildItem -Path $toolsDir -Filter $recipe.bin -Recurse | Select-Object -First 1).DirectoryName
+        if ($binDir) {
+            $env:PATH = "$binDir;$env:PATH"
+            if ($env:GITHUB_PATH) {
+                Add-Content -Path $env:GITHUB_PATH -Value $binDir
+            }
+            Write-Host "Successfully loaded $name into environment PATH ($binDir)"
+        }
+    }
     }
 
     # מצב קימפול בענן (Cloud Build) עבור פרויקטים ללא קבצים בינאריים מוכנים

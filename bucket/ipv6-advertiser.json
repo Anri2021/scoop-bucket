@@ -1,0 +1,15 @@
+{
+  "version": "1.0.2",
+  "description": "IPv6 Router Advertisement Daemon",
+  "homepage": "https://github.com/Anri2021/ipv6-advertiser",
+  "license": "MIT",
+  "url": "https://github.com/Anri2021/scoop-bucket/releases/download/ipv6-advertiser-v1.0.2/ipv6-advertiser-v1.0.2-windows-x64.zip",
+  "hash": "a19ce41da8d910543a06c9bac1a34c6597f6ea54557a20ec16864a62bed74990",
+  "bin": "ipv6-advertiser.exe",
+  "checkver": {
+    "github": "https://github.com/Anri2021/ipv6-advertiser"
+  },
+  "autoupdate": {
+    "url": "https://github.com/Anri2021/scoop-bucket/releases/download/ipv6-advertiser-v$version/ipv6-advertiser-v$version-windows-x64.zip"
+  }
+}

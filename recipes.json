@@ -25,7 +25,7 @@
       "homepage": "https://github.com/Anri2021/ddns-dynu",
       "license": "MIT",
       "repo": "Anri2021/ddns-dynu",
-      "bin": "ddns-dynu.exe"
+      "bin": "ddns-dynu.ps1"
     }
   ]
 }

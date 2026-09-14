@@ -9,7 +9,7 @@
     "bun run build"
   ],
   "url": "https://github.com/tale/headplane/archive/refs/tags/v0.7.1.zip",
-  "hash": "skip",
+  "hash": "a2fb3a13ca1811b07d2b9f071f0a7e3686497db2e7c3c56208a7f45610486222",
   "bin": "headplane.cmd",
   "checkver": "github",
   "autoupdate": {

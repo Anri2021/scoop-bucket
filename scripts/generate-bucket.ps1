@@ -32,6 +32,10 @@ foreach ($recipe in $recipes) {
     $downloadUrl  = $null
     $sha256       = $null
     $upstreamAssetFound = $false
+    # איפוס משתני מצב בכל איטרציה למניעת זליגת הגדרות בין חבילות
+    $localPreInstall = @()
+    $injectedDepends = @()
+    $distDir         = $null
 
     # -------------------------------------------------------------
     # 1. שליפת מידע וגרסאות מול המקור (GitHub או PyPI)
@@ -219,10 +223,17 @@ foreach ($recipe in $recipes) {
 
         # העלאת שחרור חדש ל-GitHub Releases
         Write-Host "Publishing release $releaseTag to $myRepo..."
-        gh release create $releaseTag $packagedZip `
-            --repo $myRepo `
-            --title "$name v$version" `
-            --notes "Automated generic cloud build for $name v$version"
+        # אם ה-Release כבר קיים - דריסת הקובץ הישן; אם לא - יצירת שחרור חדש
+        if ($releaseExists) {
+            Write-Host "Release $releaseTag already exists. Updating binary asset with --clobber..."
+            gh release upload $releaseTag $packagedZip --repo $myRepo --clobber
+        } else {
+            Write-Host "Publishing new release $releaseTag to $myRepo..."
+            gh release create $releaseTag $packagedZip `
+                --repo $myRepo `
+                --title "$name v$version" `
+                --notes "Automated generic cloud build for $name v$version"
+        }
 
         Remove-Item -Recurse -Force $workDir
     }
@@ -253,7 +264,11 @@ foreach ($recipe in $recipes) {
     elseif ($mode -eq "local" -or $mode -eq "hybrid") {
         Write-Host "Generating local build instructions for $name..."
         $downloadUrl = "https://github.com/$($recipe.repo)/archive/refs/tags/v$version.zip"
-        $sha256 = "skip"
+        # הורדה זמנית של קובץ המקור לחישוב Hash אמיתי (Scoop אינו תומך במחרוזת "skip")
+        $tempSourceZip = Join-Path $env:TEMP "$name-v$version.zip"
+        Invoke-WebRequest -Uri $downloadUrl -OutFile $tempSourceZip
+        $sha256 = (Get-FileHash -Path $tempSourceZip -Algorithm SHA256).Hash.ToLower()
+        Remove-Item -Force $tempSourceZip
 
         $localPreInstall = @()
         $injectedDepends = @()

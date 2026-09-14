@@ -288,7 +288,7 @@ function Build-CloudPackage {
         Invoke-Checked "python" @("-m","PyInstaller","--noconfirm","--clean","--onefile","--name",$Plan.name,"--distpath",$PackageDir,$entry)
       }
       "go"{Invoke-Checked "go" @("build","-trimpath","-ldflags=-s -w","-o",(Join-Path $PackageDir "$($Plan.name).exe"),".")}
-      "rust"{Invoke-Checked "cargo" @("build","--locked","--release");Get-ChildItem "target\release\*.exe"-File|Copy-Item -Destination $PackageDir}
+      "rust"{Invoke-Checked "cargo" @("build","--locked","--release");Get-ChildItem "target\release\*.exe" -File|Copy-Item -Destination $PackageDir}
       "node"{
         Invoke-Checked "corepack" @("enable");Invoke-Checked "pnpm" @("install","--frozen-lockfile");Invoke-Checked "pnpm" @("run","build")
         foreach($path in @("build","dist","drizzle","package.json","pnpm-lock.yaml")){if(Test-Path $path){Copy-Item $path -Destination $PackageDir -Recurse -Force}}
@@ -348,13 +348,13 @@ function Invoke-BuildPhase {
         if($plan.source_url-match"(?i)\.zip($|\?)"){Expand-Archive $sourceArchive $sourceDir -Force}else{Cmd "tar" @("-xf",$sourceArchive,"-C",$sourceDir)}
         $root=Get-ChildItem $sourceDir -Directory|Select-Object -First 1;$sourceRoot=if($root){$root.FullName}else{$sourceDir}
         $type=([string](Prop $plan.recipe "build_type" "auto")).ToLowerInvariant()
-        if($type-eq"auto"){$type=if(Test-Path (Join-Path $sourceRoot "package.json")){"node"}elseif(Test-Path(Join-Path $sourceRoot "Cargo.toml")){"rust"}elseif(Test-Path(Join-Path $sourceRoot "go.mod")){"go"}elseif((Test-Path(Join-Path $sourceRoot "pyproject.toml"))-or(Test-Path(Join-Path $sourceRoot "requirements.txt"))){"python"}else{"powershell"}}
+        if($type-eq"auto"){$type=if(Test-Path (Join-Path $sourceRoot "package.json")){"node"}elseif(Test-Path (Join-Path $sourceRoot "Cargo.toml")){"rust"}elseif(Test-Path (Join-Path $sourceRoot "go.mod")){"go"}elseif((Test-Path (Join-Path $sourceRoot "pyproject.toml"))-or(Test-Path (Join-Path $sourceRoot "requirements.txt"))){"python"}else{"powershell"}}
         if($plan.mode-eq"hybrid"){
           Copy-Item (Join-Path $sourceRoot "*") $packageDir -Recurse -Force
           Push-Location $packageDir
           try{
             switch($type){
-              "python"{$wheel=Join-Path $packageDir ".meta\wheelhouse";$null=New-Item -ItemType Directory -Force -Path $wheel;if(Test-Path"requirements.txt"){Cmd "python" @("-m","pip","download","--dest",$wheel,"-r","requirements.txt")};Cmd "python" @("-m","pip","download","--dest",$wheel,"pyinstaller")}
+              "python"{$wheel=Join-Path $packageDir ".meta\wheelhouse";$null=New-Item -ItemType Directory -Force -Path $wheel;if(Test-Path "requirements.txt"){Cmd "python" @("-m","pip","download","--dest",$wheel,"-r","requirements.txt")};Cmd "python" @("-m","pip","download","--dest",$wheel,"pyinstaller")}
               "node"{Cmd "corepack" @("enable");Cmd "pnpm" @("fetch","--prod","--frozen-lockfile")}
               "bun"{Cmd "bun" @("install","--frozen-lockfile","--ignore-scripts")}
               "go"{Cmd "go" @("mod","vendor")}
@@ -365,10 +365,10 @@ function Invoke-BuildPhase {
           Push-Location $sourceRoot
           try{
             switch($type){
-              "python"{$entry=[string](Prop $plan.recipe "entrypoint" "");if(-not$entry){$entry=(Get-ChildItem *.py -File|Select-Object -First 1).Name};if(Test-Path"requirements.txt"){Cmd "python" @("-m","pip","install","-r","requirements.txt")};Cmd "python" @("-m","PyInstaller","--noconfirm","--clean","--onefile","--name",$plan.name,"--distpath",$packageDir,$entry)}
+              "python"{$entry=[string](Prop $plan.recipe "entrypoint" "");if(-not$entry){$entry=(Get-ChildItem *.py -File|Select-Object -First 1).Name};if(Test-Path "requirements.txt"){Cmd "python" @("-m","pip","install","-r","requirements.txt")};Cmd "python" @("-m","PyInstaller","--noconfirm","--clean","--onefile","--name",$plan.name,"--distpath",$packageDir,$entry)}
               "go"{Cmd "go" @("build","-trimpath","-ldflags=-s -w","-o",(Join-Path $packageDir "$($plan.name).exe"),".")}
-              "rust"{Cmd "cargo" @("build","--locked","--release");Get-ChildItem "target\release\*.exe"-File|Copy-Item -Destination $packageDir}
-              "node"{Cmd "corepack" @("enable");Cmd "pnpm" @("install","--frozen-lockfile");Cmd "pnpm" @("run","build");foreach($p in @("build","dist","drizzle","package.json","pnpm-lock.yaml")){if(Test-Path$p){Copy-Item $p $packageDir -Recurse -Force}};Push-Location $packageDir;try{if(Test-Path"pnpm-lock.yaml"){Cmd "pnpm" @("install","--prod","--frozen-lockfile")}}finally{Pop-Location};@("@echo off",'node "%~dp0build\server\index.js" %*')|Set-Content (Join-Path $packageDir "$($plan.name).cmd") -Encoding ascii}
+              "rust"{Cmd "cargo" @("build","--locked","--release");Get-ChildItem "target\release\*.exe" -File|Copy-Item -Destination $packageDir}
+              "node"{Cmd "corepack" @("enable");Cmd "pnpm" @("install","--frozen-lockfile");Cmd "pnpm" @("run","build");foreach($p in @("build","dist","drizzle","package.json","pnpm-lock.yaml")){if(Test-Path $p){Copy-Item $p $packageDir -Recurse -Force}};Push-Location $packageDir;try{if(Test-Path "pnpm-lock.yaml"){Cmd "pnpm" @("install","--prod","--frozen-lockfile")}}finally{Pop-Location};@("@echo off",'node "%~dp0build\server\index.js" %*')|Set-Content (Join-Path $packageDir "$($plan.name).cmd") -Encoding ascii}
               "bun"{Cmd "bun" @("install","--frozen-lockfile");Cmd "bun" @("run","build");$out=[string](Prop $plan.recipe "output_path" "dist");Copy-Item $out $packageDir -Recurse -Force}
               "powershell"{$entry=[string](Prop $plan.recipe "entrypoint" (Prop $plan.recipe "bin"));Copy-Item $entry $packageDir}
               default{throw "Unsupported build_type '$type'"}

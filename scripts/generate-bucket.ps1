@@ -341,7 +341,16 @@ function Invoke-BuildPhase {
   							$ldFlags = if($useCgo){ "-linkmode external -extldflags '-static' -s -w" } else { "-s -w" }
   							$oldCgo = $env:CGO_ENABLED; $env:CGO_ENABLED = if($useCgo){ "1" } else { "0" }
   							try { Cmd "go" (@("build", "-trimpath", "-ldflags=$ldFlags") + $customArgs + @("-o", (Join-Path $packageDir "$($plan.name).exe"), $entry)) } finally { $env:CGO_ENABLED = $oldCgo }
-  						}
+  			  }
+			  "caddy"{
+                $oldGoos = $env:GOOS; $oldGoarch = $env:GOARCH
+                $env:GOOS = "windows"; $env:GOARCH = "amd64"
+                try {
+                  Cmd "xcaddy" @("build", $plan.tag, "--with", "github.com/caddy-dns/dynu", "--output", (Join-Path $packageDir "caddy.exe"))
+                } finally {
+                  $env:GOOS = $oldGoos; $env:GOARCH = $oldGoarch
+                }
+              }
               "rust"{Cmd "cargo" @("build","--locked","--release");Get-ChildItem "target\release\*.exe" -File|Copy-Item -Destination $packageDir}
               "node"{
               	Cmd "corepack" @("enable")

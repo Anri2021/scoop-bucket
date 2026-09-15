@@ -122,6 +122,10 @@ jobs:
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: ${{ matrix.node }}
+      - if: matrix.build_type == 'node' || matrix.build_type == 'auto'
+        name: Install Node cloud bundler
+        shell: pwsh
+        run: npm install -g @vercel/ncc
       - if: matrix.build_type == 'go' || matrix.build_type == 'auto'
         uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
         with:

@@ -414,9 +414,6 @@ function Invoke-BuildPhase {
                 }
                 $cmdTarget = ($entry -replace '/','\')
                 @("@echo off", 'set "PYTHONPATH=%~dp0lib;%PYTHONPATH%"', ('python "%~dp0{0}" %*' -f $cmdTarget)) | Set-Content (Join-Path $packageDir "$($plan.name).cmd") -Encoding ascii
-              } finally {
-                  $env:PYTHONPATH = $oldPyPath
-                }
               }
               "go"{
   							$entry = [string](Prop $plan.recipe "entrypoint" "."); if($entry -and -not ($entry.StartsWith(".") -or $entry.StartsWith("/"))) { $entry = "./$entry" }

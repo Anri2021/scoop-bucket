@@ -9,7 +9,7 @@
     "engine": {
       "type": "object",
       "properties": {
-        "version": { "const": 3 },
+        "version": { "const": 4 },
         "default_policy": { "enum": [ "universal-first", "native-first", "force-local" ] },
         "default_architectures": { "$ref": "#/$defs/architectures" }
       },
@@ -61,7 +61,7 @@
         "persist": {},
         "shortcuts": {},
         "extract_dir": { "type": "string" },
-        "compression_level": { "type": "integer", "minimum": 1, "maximum": 9, "default": 7 }
+        "compression_level": { "type": "integer", "minimum": 1, "maximum": 9, "default": 5 }
       },
       "allOf": [
         { "if": { "required": [ "source_type" ], "properties": { "source_type": { "const": "github" } } }, "then": { "required": [ "repo" ] } },

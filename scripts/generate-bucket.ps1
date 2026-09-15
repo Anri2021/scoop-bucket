@@ -405,25 +405,34 @@ function Invoke-BuildPhase {
                   if(Test-Path "scapy/main.py"){ $entry = "scapy/main.py" }
                   else{ $entry = (Get-ChildItem *.py -File | Select-Object -First 1).Name }
                 }
-                if(Test-Path "requirements.txt"){ Cmd "python" @("-m","pip","install","--disable-pip-version-check","-r","requirements.txt") }
-                $oldPyPath = $env:PYTHONPATH
-                $env:PYTHONPATH = "$PWD;$env:PYTHONPATH"
-                try {
-                  $pyRunner = "import sys, PyInstaller.__main__; sys.setrecursionlimit(5000); PyInstaller.__main__.run(sys.argv[1:])"
-                  $pyArgs = @("-c", $pyRunner, "--noconfirm", "--clean", "--onefile", "--name", $plan.name, "--distpath", $packageDir)
-                  if(Test-Path $plan.name){ $pyArgs += @("--collect-all", $plan.name) }
-                  $pyArgs += $entry
-                  Cmd "python" $pyArgs
-                } finally {
+                Copy-Item -Path "*.py" -Destination $packageDir -Force -ErrorAction SilentlyContinue
+                if(Test-Path $plan.name){ Copy-Item -Path $plan.name -Destination $packageDir -Recurse -Force }
+                $libDir = Join-Path $packageDir "lib"
+                if(Test-Path "requirements.txt"){
+                  $null = New-Item -ItemType Directory -Force -Path $libDir
+                  Cmd "python" @("-m","pip","install","--disable-pip-version-check","--target",$libDir,"-r","requirements.txt")
+                }
+                $cmdTarget = ($entry -replace '/','\')
+                @("@echo off", 'set "PYTHONPATH=%~dp0lib;%PYTHONPATH%"', ('python "%~dp0{0}" %*' -f $cmdTarget)) | Set-Content (Join-Path $packageDir "$($plan.name).cmd") -Encoding ascii
+              } finally {
                   $env:PYTHONPATH = $oldPyPath
                 }
               }
-              "go"{$entry=[string](Prop $plan.recipe "entrypoint" ".");if($entry -and -not ($entry.StartsWith(".") -or $entry.StartsWith("/"))) { $entry = "./$entry" }; $oldCgo = $env:CGO_ENABLED; $env:CGO_ENABLED = "0"; try { Cmd "go" @("build","-trimpath","-ldflags=-s -w","-o",(Join-Path $packageDir "$($plan.name).exe"),$entry) } finally { $env:CGO_ENABLED = $oldCgo }}
+              "go"{
+  							$entry = [string](Prop $plan.recipe "entrypoint" "."); if($entry -and -not ($entry.StartsWith(".") -or $entry.StartsWith("/"))) { $entry = "./$entry" }
+  							$useCgo = [bool](Prop $plan.recipe "cgo" $false)
+  							$customArgs = @(Prop $plan.recipe "build_args" @())
+  							$ldFlags = if($useCgo){ "-linkmode external -extldflags '-static' -s -w" } else { "-s -w" }
+  							$oldCgo = $env:CGO_ENABLED; $env:CGO_ENABLED = if($useCgo){ "1" } else { "0" }
+  							try { Cmd "go" (@("build", "-trimpath", "-ldflags=$ldFlags") + $customArgs + @("-o", (Join-Path $packageDir "$($plan.name).exe"), $entry)) } finally { $env:CGO_ENABLED = $oldCgo }
+  						}
               "rust"{Cmd "cargo" @("build","--locked","--release");Get-ChildItem "target\release\*.exe" -File|Copy-Item -Destination $packageDir}
               "node"{
                 Cmd "corepack" @("enable")
                 if(Test-Path "pnpm-lock.yaml"){Cmd "pnpm" @("install","--frozen-lockfile");Cmd "pnpm" @("run","build")}else{Cmd "npm" @("install","--ignore-scripts");Cmd "npm" @("run","build")}
-                foreach($p in @("bin","build","dist","drizzle","package.json","package-lock.json","pnpm-lock.yaml")){if(Test-Path $p){Copy-Item $p $packageDir -Recurse -Force}}
+                $extraDirs = @(Prop $plan.recipe "output_dirs" @())
+                $targets = @("bin","build","dist","drizzle","lib","package.json","package-lock.json","pnpm-lock.yaml") + $extraDirs
+                foreach($p in ($targets | Select-Object -Unique)){if(Test-Path $p){Copy-Item $p $packageDir -Recurse -Force}}
                 Push-Location $packageDir;try{if(Test-Path "pnpm-lock.yaml"){Cmd "pnpm" @("install","--prod","--frozen-lockfile")}else{Cmd "npm" @("install","--omit=dev","--ignore-scripts","--no-audit","--no-fund")}}finally{Pop-Location}
                 $entry=[string](Prop $plan.recipe "entrypoint" "build/server/index.js");$cmdTarget=($entry -replace '/','\')
                 @("@echo off",('node "%~dp0{0}" %*' -f $cmdTarget))|Set-Content (Join-Path $packageDir "$($plan.name).cmd") -Encoding ascii
@@ -434,7 +443,10 @@ function Invoke-BuildPhase {
             }
           }finally{Pop-Location}
         }
-        Get-ChildItem $packageDir -Recurse -Force|Where-Object{$_.Name-match"(?i)^(test|tests|docs|__pycache__)$|\.(map|pdb|d\.ts|pyc)$"}|Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+        Get-ChildItem $packageDir -Recurse -Force | Where-Object {
+  				$_.Name -match "(?i)^(test|tests|docs|__pycache__)$|\.(map|pdb|d\.ts|pyc|so|dylib)$" -or
+  				($_.PSIsContainer -and $_.Name -match "(?i)^(darwin|linux|freebsd|android)$")
+        } | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
         if(-not(Get-ChildItem $packageDir -File -Recurse|Select-Object -First 1)){throw "Empty package"}
         $archive=Join-Path $outputDir $plan.artifact_name
         $level=[int](Prop $plan.recipe "compression_level" 5);$threads=[Math]::Max(1,[int]([Environment]::ProcessorCount/[Math]::Max(1,$activeBuildCount)))
@@ -568,7 +580,12 @@ function Invoke-FinalizePhase {
     $architectures=@($plan.architectures)
     if($architectures.Count-eq1-and$architectures[0]-eq"64bit"){$manifest.url=$download.url;$manifest.hash=$download.hash;if($extractDir){$manifest.extract_dir=$extractDir}}
     else{$manifest.architecture=[ordered]@{};foreach($arch in $architectures){$manifest.architecture[$arch]=$download}}
-    $bin=Get-Prop $plan.recipe "bin";if($bin){$manifest.bin=$bin}
+    $bin = Get-Prop $plan.recipe "bin"
+    if(-not $bin){
+      $type = ([string](Get-Prop $plan.recipe "build_type" "")).ToLowerInvariant()
+      $bin = if($type -in @("node","python","powershell")){ "$($plan.name).cmd" } else { "$($plan.name).exe" }
+    }
+    $manifest.bin = $bin
     $depends=@(Get-ToolDepends $plan);if($depends.Count){$manifest.depends=if($depends.Count-eq1){$depends[0]}else{$depends}}
     if($plan.mode-in@("local","hybrid")){$manifest.pre_install=Get-LocalCommands $plan}
     $persist=@(Get-Prop $plan.recipe "persist" @());if($persist.Count){$manifest.persist=if($persist.Count-eq1){$persist[0]}else{$persist}}

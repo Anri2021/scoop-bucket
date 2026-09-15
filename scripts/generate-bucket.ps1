@@ -400,22 +400,20 @@ function Invoke-BuildPhase {
           try{
             switch($type){
               "python"{
-                $entry=[string](Prop $plan.recipe "entrypoint" "")
-                if(-not$entry){$entry=(Get-ChildItem *.py -File|Select-Object -First 1).Name}
-                if($entry -and -not $entry.EndsWith(".py")){
-                  $pyEntry = "$entry.py"
-                  if((Test-Path $entry) -and -not (Test-Path $pyEntry)){ Copy-Item $entry $pyEntry -Force }
-                  $entry = $pyEntry
+                $entry = [string](Prop $plan.recipe "entrypoint" "")
+                if(-not $entry -or -not (Test-Path $entry)){
+                  if(Test-Path "scapy/main.py"){ $entry = "scapy/main.py" }
+                  else{ $entry = (Get-ChildItem *.py -File | Select-Object -First 1).Name }
                 }
-                if(Test-Path "requirements.txt"){Cmd "python" @("-m","pip","install","--disable-pip-version-check","-r","requirements.txt")}
+                if(Test-Path "requirements.txt"){ Cmd "python" @("-m","pip","install","--disable-pip-version-check","-r","requirements.txt") }
                 $oldPyPath = $env:PYTHONPATH
                 $env:PYTHONPATH = "$PWD;$env:PYTHONPATH"
-                try{
-                  $pyArgs = @("-m","PyInstaller","--noconfirm","--clean","--onefile","--name",$plan.name,"--distpath",$packageDir)
-                  if(Test-Path $plan.name){$pyArgs += @("--collect-all", $plan.name)}
-                  $pyArgs += $entry
-                  Cmd "python" $pyArgs
-                }finally{
+                try {
+                  $pkgNorm = $packageDir -replace '\\', '/'
+                  $entryNorm = $entry -replace '\\', '/'
+                  $pyCmd = "import sys, PyInstaller.__main__; sys.setrecursionlimit(5000); args=['--noconfirm','--clean','--onefile','--name','$($plan.name)','--distpath','$pkgNorm']; " + (if(Test-Path $plan.name){"args+=['--collect-all','$($plan.name)']; "}else{""}) + "args+=['$entryNorm']; PyInstaller.__main__.run(args)"
+                  Cmd "python" @("-c", $pyCmd)
+                } finally {
                   $env:PYTHONPATH = $oldPyPath
                 }
               }

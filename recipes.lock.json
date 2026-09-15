@@ -1,38 +1,38 @@
 {
-  "engine_version": "3.0",
-  "recipes_sha256": "9b6beb1cde47b1c44d392e1a0473c1507d0f9f4e91a9334cba11fa6956785cfb",
+  "engine_version": "4.0",
+  "recipes_sha256": "a014791a32e1c568f49fa5c79ba1035dafc03b1142bb44e9590b78d702df251d",
   "packages": {
     "bun": {
       "version": "1.4.2",
       "tag": "bun-v1.4.2",
       "mode": "upstream",
       "reason": "explicit:upstream",
-      "fingerprint": "cca17f10e9b72255ff628f1903f28f03b9f54191f05a83ef92385daef1f0daab",
-      "artifact": "bun-1.4.2-cca17f10e9b7-windows-x64.7z"
+      "fingerprint": "7f13dbda4cdea82b41965614feea4140c4cc32203239d864d54eeef99970c518",
+      "artifact": "bun-1.4.2-7f13dbda4cde-windows-x64.zip"
     },
     "ddns-dynu": {
       "version": "1.0.2",
       "tag": "v1.0.2",
       "mode": "upstream",
       "reason": "explicit:upstream",
-      "fingerprint": "3be2df2a8eaec1a22af5277e1ab5eaeb58d16aefb10e1fdbb80817755158c2b9",
-      "artifact": "ddns-dynu-1.0.2-3be2df2a8eae-windows-x64.7z"
+      "fingerprint": "6c4cbd80d88a4ecb6e35b24c1ad705cb0df83476b2a03b2f6699f7e74fe1005c",
+      "artifact": "ddns-dynu-1.0.2-6c4cbd80d88a-windows-x64.zip"
     },
     "headplane": {
       "version": "0.7.1",
       "tag": "v0.7.1",
       "mode": "cloud",
       "reason": "explicit:cloud",
-      "fingerprint": "371a836db31b620da385513d5abad5dee6dbef2e0a67b44d435c14a00c3c3565",
-      "artifact": "headplane-0.7.1-371a836db31b-windows-x64.7z"
+      "fingerprint": "8b0d9110190245c86441b2ecb1604a3a2bf072658d036fbdf8e10d4e96ee567d",
+      "artifact": "headplane-0.7.1-8b0d91101902-windows-x64.zip"
     },
     "ipv6-advertiser": {
       "version": "1.0.2",
       "tag": "v1.0.2",
       "mode": "cloud",
       "reason": "explicit:cloud",
-      "fingerprint": "6c3240e0ef2e1de5b40321a1b21c9dfc185a8fcf8bc2f5d5a617336ac6925642",
-      "artifact": "ipv6-advertiser-1.0.2-6c3240e0ef2e-windows-x64.7z"
+      "fingerprint": "295290a150ba39bf084b515e3295d54b801f779dcd9115775cc2981dd081dfdd",
+      "artifact": "ipv6-advertiser-1.0.2-295290a150ba-windows-x64.zip"
     }
   }
 }

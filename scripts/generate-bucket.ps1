@@ -399,14 +399,33 @@ function Invoke-BuildPhase {
           Push-Location $sourceRoot
           try{
             switch($type){
-              "python"{$entry=[string](Prop $plan.recipe "entrypoint" "");if(-not$entry){$entry=(Get-ChildItem *.py -File|Select-Object -First 1).Name};if(Test-Path "requirements.txt"){Cmd "python" @("-m","pip","install","--disable-pip-version-check","-r","requirements.txt")};if((Test-Path "setup.py") -or (Test-Path "pyproject.toml")){Cmd "python" @("-m","pip","install","--disable-pip-version-check",".")};Cmd "python" @("-m","PyInstaller","--noconfirm","--clean","--onefile","--name",$plan.name,"--distpath",$packageDir,$entry)}
+              "python"{
+                $entry=[string](Prop $plan.recipe "entrypoint" "")
+                if(-not$entry){$entry=(Get-ChildItem *.py -File|Select-Object -First 1).Name}
+                if($entry -and -not $entry.EndsWith(".py")){
+                  $pyEntry = "$entry.py"
+                  if((Test-Path $entry) -and -not (Test-Path $pyEntry)){ Copy-Item $entry $pyEntry -Force }
+                  $entry = $pyEntry
+                }
+                if(Test-Path "requirements.txt"){Cmd "python" @("-m","pip","install","--disable-pip-version-check","-r","requirements.txt")}
+                $oldPyPath = $env:PYTHONPATH
+                $env:PYTHONPATH = "$PWD;$env:PYTHONPATH"
+                try{
+                  $pyArgs = @("-m","PyInstaller","--noconfirm","--clean","--onefile","--name",$plan.name,"--distpath",$packageDir)
+                  if(Test-Path $plan.name){$pyArgs += @("--collect-all", $plan.name)}
+                  $pyArgs += $entry
+                  Cmd "python" $pyArgs
+                }finally{
+                  $env:PYTHONPATH = $oldPyPath
+                }
+              }
               "go"{$entry=[string](Prop $plan.recipe "entrypoint" ".");if($entry -and -not ($entry.StartsWith(".") -or $entry.StartsWith("/"))) { $entry = "./$entry" }; $oldCgo = $env:CGO_ENABLED; $env:CGO_ENABLED = "0"; try { Cmd "go" @("build","-trimpath","-ldflags=-s -w","-o",(Join-Path $packageDir "$($plan.name).exe"),$entry) } finally { $env:CGO_ENABLED = $oldCgo }}
               "rust"{Cmd "cargo" @("build","--locked","--release");Get-ChildItem "target\release\*.exe" -File|Copy-Item -Destination $packageDir}
               "node"{
                 Cmd "corepack" @("enable")
-                if(Test-Path "pnpm-lock.yaml"){Cmd "pnpm" @("install","--frozen-lockfile");Cmd "pnpm" @("run","build")}else{Cmd "npm" @("install");Cmd "npm" @("run","build")}
+                if(Test-Path "pnpm-lock.yaml"){Cmd "pnpm" @("install","--frozen-lockfile");Cmd "pnpm" @("run","build")}else{Cmd "npm" @("install","--ignore-scripts");Cmd "npm" @("run","build")}
                 foreach($p in @("bin","build","dist","drizzle","package.json","package-lock.json","pnpm-lock.yaml")){if(Test-Path $p){Copy-Item $p $packageDir -Recurse -Force}}
-                Push-Location $packageDir;try{if(Test-Path "pnpm-lock.yaml"){Cmd "pnpm" @("install","--prod","--frozen-lockfile")}else{Cmd "npm" @("install","--omit=dev")}}finally{Pop-Location}
+                Push-Location $packageDir;try{if(Test-Path "pnpm-lock.yaml"){Cmd "pnpm" @("install","--prod","--frozen-lockfile")}else{Cmd "npm" @("install","--omit=dev","--ignore-scripts","--no-audit","--no-fund")}}finally{Pop-Location}
                 $entry=[string](Prop $plan.recipe "entrypoint" "build/server/index.js");$cmdTarget=($entry -replace '/','\')
                 @("@echo off",('node "%~dp0{0}" %*' -f $cmdTarget))|Set-Content (Join-Path $packageDir "$($plan.name).cmd") -Encoding ascii
               }

@@ -297,7 +297,7 @@ function Invoke-BuildPhase {
         $null=New-Item -ItemType Directory -Force -Path $sourceDir,$packageDir,$outputDir
         $sourceArchive=Join-Path $cacheRoot ("source-"+$plan.fingerprint)
         $null=Cache $plan.source_url $sourceArchive $plan.source_hash
-        if($plan.source_url-match"(?i)\.zip($|\?)"){Expand-Archive $sourceArchive $sourceDir -Force}else{Cmd "tar" @("-xf",$sourceArchive,"-C",$sourceDir)}
+        Cmd "tar" @("-xf", $sourceArchive, "-C", $sourceDir)
         $root=Get-ChildItem $sourceDir -Directory|Select-Object -First 1;$sourceRoot=if($root){$root.FullName}else{$sourceDir}
         $type=([string](Prop $plan.recipe "build_type" "auto")).ToLowerInvariant()
         if($type-eq"auto"){$type=if(Test-Path (Join-Path $sourceRoot "package.json")){"node"}elseif(Test-Path (Join-Path $sourceRoot "Cargo.toml")){"rust"}elseif(Test-Path (Join-Path $sourceRoot "go.mod")){"go"}elseif((Test-Path (Join-Path $sourceRoot "pyproject.toml"))-or(Test-Path (Join-Path $sourceRoot "requirements.txt"))){"python"}else{"powershell"}}
@@ -384,10 +384,11 @@ function Invoke-BuildPhase {
             }
           } finally{Pop-Location}
         }
-        Get-ChildItem $packageDir -Recurse -Force | Where-Object {
-  				$_.Name -match "(?i)^(test|tests|docs|__pycache__)$|\.(map|pdb|d\.ts|pyc|so|dylib)$" -or
-  				($_.PSIsContainer -and $_.Name -match "(?i)^(darwin|linux|freebsd|android)$")
-        } | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+        [IO.Directory]::EnumerateFileSystemEntries($packageDir, "*", [IO.SearchOption]::AllDirectories) | Where-Object {
+		  $_ -match "(?i)[\\/](test|tests|docs|__pycache__|darwin|linux|freebsd|android)$|\.(map|pdb|d\.ts|pyc|so|dylib)$"
+		} | Sort-Object { $_.Length } -Descending | ForEach-Object {
+	    	if (Test-Path -LiteralPath $_) { Remove-Item -LiteralPath $_ -Recurse -Force -ErrorAction SilentlyContinue }
+		}
         if(-not(Get-ChildItem $packageDir -File -Recurse|Select-Object -First 1)){throw "Empty package"}
         $archive=Join-Path $outputDir $plan.artifact_name
         $level=[int](Prop $plan.recipe "compression_level" 5);$threads=[Math]::Max(1,[int]([Environment]::ProcessorCount/[Math]::Max(1,$activeBuildCount)))

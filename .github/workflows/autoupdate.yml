@@ -122,19 +122,11 @@ jobs:
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: ${{ matrix.node }}
-      - if: matrix.build_type == 'node' || matrix.build_type == 'auto'
-        name: Install Node cloud bundler
-        shell: pwsh
-        run: npm install -g @vercel/ncc
       - if: matrix.build_type == 'go' || matrix.build_type == 'auto'
         uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
         with:
           go-version: ${{ matrix.go }}
           cache: false
-      - if: matrix.build_type == 'python' || matrix.build_type == 'auto'
-        name: Install Python cloud builder
-        shell: pwsh
-        run: python -m pip install --disable-pip-version-check --upgrade pyinstaller
       - name: Build untrusted sources without a write token
         shell: pwsh
         run: ./scripts/generate-bucket.ps1 -Phase Build -PackageName '${{ matrix.package }}' -RecipesPath ./recipes.json -PlanPath ./dist/plan.json -StageDir ./dist/stage -CacheDir ./dist/cache

@@ -33,6 +33,9 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Optimize Runner I/O (Disable Defender)
+        shell: pwsh
+        run: Set-MpPreference -DisableRealtimeMonitoring $true -DisableIOAVProtection $true
       - name: Test schema, dependency graph and generated manifests
         shell: pwsh
         run: ./tests/test-engine.ps1
@@ -128,7 +131,7 @@ jobs:
         uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
         with:
           go-version: ${{ matrix.go }}
-          cache: false
+          cache: true
       - name: Build untrusted sources without a write token
         shell: pwsh
         run: ./scripts/generate-bucket.ps1 -Phase Build -PackageName '${{ matrix.package }}' -RecipesPath ./recipes.json -PlanPath ./dist/plan.json -StageDir ./dist/stage -CacheDir ./dist/cache
@@ -192,7 +195,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
-          fetch-depth: 0
+          fetch-depth: 1
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           name: meta-plan-${{ github.run_id }}

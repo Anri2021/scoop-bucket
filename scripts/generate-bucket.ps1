@@ -372,7 +372,11 @@ function Invoke-BuildPhase {
               	}finally{Pop-Location}
 
               	$cmdTarget = ($entry -replace '/','\')
-              	@("@echo off", 'cd /d "%~dp0"', ('node "%~dp0{0}" %*' -f $cmdTarget)) | Set-Content (Join-Path $packageDir "$($plan.name).cmd") -Encoding ascii
+				$cmdLines = [Collections.Generic.List[string]]::new()
+				$cmdLines.Add("@echo off")
+				if (@(Prop $plan.recipe "persist" @()).Count -gt 0) { $cmdLines.Add('cd /d "%~dp0"') }
+				$cmdLines.Add(('node "%~dp0{0}" %*' -f $cmdTarget))
+				$cmdLines | Set-Content (Join-Path $packageDir "$($plan.name).cmd") -Encoding ascii
               }
               "bun"{Cmd "bun" @("install","--frozen-lockfile");Cmd "bun" @("run","build");$out=[string](Prop $plan.recipe "output_path" "dist");Copy-Item $out $packageDir -Recurse -Force}
               "powershell"{$entry=[string](Prop $plan.recipe "entrypoint" (Prop $plan.recipe "bin"));Copy-Item $entry $packageDir}

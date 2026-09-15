@@ -1,0 +1,54 @@
+{
+  "engine_version": "4.0",
+  "recipes_sha256": "641ffb20a8973e958c4acc69f0c85bab43711e3d02439974592cf81b7e1a2119",
+  "packages": {
+    "bun": {
+      "version": "1.4.2",
+      "tag": "bun-v1.4.2",
+      "mode": "upstream",
+      "reason": "explicit:upstream",
+      "fingerprint": "3a57c1a5752feb091e7571e197311de2ee17d475202db450a09e45d0d2580dc4",
+      "artifact": "bun-1.4.2-3a57c1a5752f-windows-x64.zip"
+    },
+    "ddns-dynu": {
+      "version": "1.0.2",
+      "tag": "v1.0.2",
+      "mode": "upstream",
+      "reason": "explicit:upstream",
+      "fingerprint": "d536cba5407176a66ec1d77fa350594e9edc8fcdd194d3e21e14429ad6c8ba5c",
+      "artifact": "ddns-dynu-1.0.2-d536cba54071-windows-x64.zip"
+    },
+    "dex": {
+      "version": "2.45.1",
+      "tag": "v2.45.1",
+      "mode": "cloud",
+      "reason": "explicit:cloud",
+      "fingerprint": "1592db80c2f0a049f1e5dfe9d50fa96954a8bfc0ed5d4b443384d52cf23757a9",
+      "artifact": "dex-2.45.1-1592db80c2f0-windows-x64.zip"
+    },
+    "headplane": {
+      "version": "0.7.1",
+      "tag": "v0.7.1",
+      "mode": "cloud",
+      "reason": "explicit:cloud",
+      "fingerprint": "da89dfd20e3f3ccf3e7dfb7082c4ad3b1ba1310f25b7c62746394a5c554d4d3b",
+      "artifact": "headplane-0.7.1-da89dfd20e3f-windows-x64.zip"
+    },
+    "headscale": {
+      "version": "0.29.3",
+      "tag": "v0.29.3",
+      "mode": "cloud",
+      "reason": "explicit:cloud",
+      "fingerprint": "64ca591b244d98a4b3cdc152bc0a70d61d1d77d2591ccb5eeb8887719d4b9ad5",
+      "artifact": "headscale-0.29.3-64ca591b244d-windows-x64.zip"
+    },
+    "ipv6-advertiser": {
+      "version": "1.0.2",
+      "tag": "v1.0.2",
+      "mode": "cloud",
+      "reason": "explicit:cloud",
+      "fingerprint": "dee05dfceb2233675cf5efd7354bb51d3c5e2cd2454e0294f7ee7da66fc318b9",
+      "artifact": "ipv6-advertiser-1.0.2-dee05dfceb22-windows-x64.zip"
+    }
+  }
+}

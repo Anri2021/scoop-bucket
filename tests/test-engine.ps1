@@ -13,6 +13,11 @@ $sourceRecipesPath=Join-Path $RepositoryRoot "recipes.json"
 $recipesPath=$sourceRecipesPath
 $schemaPath=Join-Path $RepositoryRoot "schemas/recipes.schema.json"
 $enginePath=Join-Path $RepositoryRoot "scripts/generate-bucket.ps1"
+$engineSha=(Get-FileHash -LiteralPath $enginePath -Algorithm SHA256).Hash.ToLowerInvariant()
+$workflowPath=Join-Path $RepositoryRoot ".github/workflows/autoupdate.yml"
+$workflowSha=(Get-FileHash -LiteralPath $workflowPath -Algorithm SHA256).Hash.ToLowerInvariant()
+$pipelineBytes=[Text.Encoding]::UTF8.GetBytes("$engineSha`n$workflowSha")
+$pipelineSha=[Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($pipelineBytes)).ToLowerInvariant()
 $recipesJson=Get-Content $recipesPath -Raw -Encoding utf8
 Assert-True ($recipesJson|Test-Json -SchemaFile $schemaPath) "recipes.json must match its schema"
 
@@ -48,7 +53,7 @@ try{
       recipe=[ordered]@{name="fixture-hybrid";description="fixture";homepage="https://example.invalid";license="MIT";source_type="github";repo="owner/repo";mode="hybrid";architectures=@("64bit");build_type="rust";bin="fixture-hybrid.exe";tool_dependencies=@("fixture-upstream")}
     }
   )
-  $document=[ordered]@{engine_version="3.0";recipes_sha256=$hash;packages=$plans}
+  $document=[ordered]@{engine_version="4.0";engine_sha256=$engineSha;pipeline_sha256=$pipelineSha;recipes_sha256=$hash;packages=$plans}
   $document|ConvertTo-Json -Depth 30|Set-Content -LiteralPath $plan -Encoding utf8
 
   $testCache=Join-Path $temp "cache"
@@ -68,6 +73,7 @@ try{
   Assert-True (@($local.depends)-contains"fixture-upstream") "tool dependency must be preserved"
   Assert-True (@($hybrid.pre_install).Count-ge3) "hybrid manifest must complete locally"
   Assert-True ($upstream.url-eq"https://example.invalid/tool.zip") "upstream must remain pass-through"
+  Assert-True ((Get-Content $enginePath -Raw)-match'windows-x64\.zip') "cloud packages must use Scoop-compatible ZIP archives"
 
   $generatedLock=Join-Path (Split-Path $recipesPath -Parent) "recipes.lock.json"
   $first=(Get-FileHash $generatedLock -Algorithm SHA256).Hash

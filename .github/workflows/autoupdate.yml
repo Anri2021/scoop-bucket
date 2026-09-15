@@ -70,7 +70,7 @@ jobs:
           "has_build=$($builds.Count -gt 0)".ToLowerInvariant() >> $env:GITHUB_OUTPUT
           "needs_python=$($types -contains 'python' -or $types -contains 'auto')".ToLowerInvariant() >> $env:GITHUB_OUTPUT
           "needs_node=$($types -contains 'node' -or $types -contains 'auto')".ToLowerInvariant() >> $env:GITHUB_OUTPUT
-          "needs_go=$($types -contains 'go' -or $types -contains 'auto')".ToLowerInvariant() >> $env:GITHUB_OUTPUT
+          "needs_go=$($types -contains 'go' -or $types -contains 'caddy' -or $types -contains 'auto')".ToLowerInvariant() >> $env:GITHUB_OUTPUT
           $include = @($builds | ForEach-Object {
             [ordered]@{
               package = $_.name; build_type = $_.recipe.build_type; fingerprint = $_.fingerprint.Substring(0, 16)
@@ -130,7 +130,7 @@ jobs:
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: ${{ matrix.node }}
-      - if: matrix.build_type == 'go' || matrix.build_type == 'auto'
+      - if: matrix.build_type == 'go' || matrix.build_type == 'caddy' || matrix.build_type == 'auto'
         uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
         with:
           go-version: ${{ matrix.go }}

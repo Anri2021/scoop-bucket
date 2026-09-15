@@ -1,6 +1,6 @@
 {
   "engine_version": "4.0",
-  "recipes_sha256": "b45f635183b440e6b1e5899e488bcbc1295b2e67080a0842e46574ae51b1c25e",
+  "recipes_sha256": "caa4589323bfe0ccefcd43120d6f381592c99f9d3d1ed697bcf5dcf7cf174270",
   "packages": {
     "bun": {
       "version": "1.4.2",
@@ -15,8 +15,8 @@
       "tag": "v1.0.6",
       "mode": "upstream",
       "reason": "explicit:upstream",
-      "fingerprint": "7d51b3c35cf8302658e082634e3a661ac6076f98001093c63a405df62a46d84b",
-      "artifact": "ddns-dynu-1.0.6-7d51b3c35cf8-windows-x64.zip"
+      "fingerprint": "0d4ba3d4947fe89098f2fbaa4049624d3c28b85b50f99de87e07308411418653",
+      "artifact": "ddns-dynu-1.0.6-0d4ba3d4947f-windows-x64.zip"
     },
     "dex": {
       "version": "2.45.1",

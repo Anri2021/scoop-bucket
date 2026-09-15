@@ -12,5 +12,5 @@
     "2893b49fdb764702eeb2de9a149a4557ad8453f1be722a790aadbb48983f3f14"
   ],
   "bin": "ddns-dynu.ps1",
-  "persist": "ddns-dynu.conf"
+  "persist": "ddns-dynu.example.conf"
 }

@@ -327,9 +327,10 @@ function Invoke-BuildPhase {
                 if(Test-Path $plan.name){ Copy-Item -Path $plan.name -Destination $packageDir -Recurse -Force }
                 $libDir = Join-Path $packageDir "lib"
                 if(Test-Path "requirements.txt"){
-                  $null = New-Item -ItemType Directory -Force -Path $libDir
-                  Cmd "python" @("-m","pip","install","--disable-pip-version-check","--target",$libDir,"-r","requirements.txt")
-                }
+				  $null = New-Item -ItemType Directory -Force -Path $libDir
+				  if(Get-Command uv -ErrorAction SilentlyContinue){ Cmd "uv" @("pip","install","--target",$libDir,"-r","requirements.txt") }
+				  else{ Cmd "python" @("-m","pip","install","--disable-pip-version-check","--target",$libDir,"-r","requirements.txt") }
+				}
                 $cmdTarget = ($entry -replace '/','\')
                 @("@echo off", 'set "PYTHONPATH=%~dp0lib;%PYTHONPATH%"', ('python "%~dp0{0}" %*' -f $cmdTarget)) | Set-Content (Join-Path $packageDir "$($plan.name).cmd") -Encoding ascii
               }

@@ -10,3 +10,4 @@
     { "name": "headscale", "description": "An open source, self-hosted implementation of the Tailscale control server", "homepage": "https://github.com/juanfont/headscale", "license": "BSD-3-Clause", "repo": "juanfont/headscale", "mode": "auto", "bin": "headscale.exe" }
   ]
 }
+

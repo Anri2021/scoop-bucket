@@ -3,8 +3,8 @@
   "description": "Pack repository contents into a single AI-friendly document",
   "homepage": "https://repomix.com",
   "license": "MIT",
-  "url": "https://github.com/Anri2021/scoop-bucket/releases/download/repomix-v1.18.0/repomix-1.18.0-3d2529803cd6-windows-x64.zip",
-  "hash": "cecb589e798e2c3429661ecea3caecbbcaede73a3146c4e5365ebb027883cfc5",
+  "url": "https://github.com/Anri2021/scoop-bucket/releases/download/repomix-v1.18.0/repomix-1.18.0-751b07b1e6c0-windows-x64.zip",
+  "hash": "4b1bebf7095ce5e152c70ae974b0d1ae398f4c7861d8ad3ee4b97c526735e43c",
   "bin": "repomix.cmd",
   "depends": "nodejs"
 }

@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Meta-Bucket v3: deterministic planner, tiered parallel builder and privileged finalizer.
+  Meta-Bucket v4: deterministic planner, distributed builder and transactional finalizer.
 #>
 [CmdletBinding()]
 param(
@@ -10,6 +10,7 @@ param(
   [string]$StageDir = "$PSScriptRoot/../dist/stage",
   [string]$BucketDir = "$PSScriptRoot/../bucket",
   [string]$CacheDir = "$PSScriptRoot/../dist/cache",
+  [string]$PackageName = "",
   [ValidateRange(1,32)][int]$ThrottleLimit = [Math]::Min([Environment]::ProcessorCount, 8),
   [switch]$ForceRebuild,
   [switch]$NoPublish,
@@ -20,7 +21,13 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
 $PSNativeCommandUseErrorActionPreference = $false
-$EngineVersion = "3.0"
+$EngineVersion = "4.0"
+$EngineSha256 = Get-FileHash -LiteralPath $PSCommandPath -Algorithm SHA256 | Select-Object -ExpandProperty Hash
+$EngineSha256 = $EngineSha256.ToLowerInvariant()
+$WorkflowPath = Join-Path (Split-Path $PSScriptRoot -Parent) ".github/workflows/autoupdate.yml"
+$WorkflowSha256 = if(Test-Path -LiteralPath $WorkflowPath){(Get-FileHash -LiteralPath $WorkflowPath -Algorithm SHA256).Hash.ToLowerInvariant()}else{"none"}
+$PipelineBytes = [Text.Encoding]::UTF8.GetBytes("$EngineSha256`n$WorkflowSha256")
+$PipelineSha256 = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($PipelineBytes)).ToLowerInvariant()
 
 function Get-Prop {
   param([object]$Object,[string]$Name,$Default=$null)
@@ -127,7 +134,7 @@ function Assert-Recipes {
 }
 
 function Resolve-Plans {
-  param([object[]]$Recipes,[string]$TargetRepository,[string]$Engine,[switch]$Force)
+  param([object[]]$Recipes,[string]$TargetRepository,[string]$Engine,[string]$EngineHash,[switch]$Force)
   $headers=Get-Headers
   $cacheRoot=[IO.Path]::GetFullPath($CacheDir)
   $results=@($Recipes | ForEach-Object -Parallel {
@@ -136,6 +143,7 @@ function Resolve-Plans {
     $cacheRoot=$using:cacheRoot
     $targetRepo=$using:TargetRepository
     $engine=$using:Engine
+    $engineHash=$using:EngineHash
     $force=$using:Force
 
     function Prop { param([object]$o,[string]$n,$d=$null); $p=$o.PSObject.Properties[$n]; if($null -eq $p -or $null -eq $p.Value){return $d}; return $p.Value }
@@ -205,9 +213,9 @@ function Resolve-Plans {
         foreach($asset in $selected){$upstreamUrls.Add([string]$asset.browser_download_url);$upstreamHashes.Add((AssetHash $asset))}
       }
 
-      $canonical=[ordered]@{engine=$engine;recipe=$recipe;source_type=$sourceType;version=$version;tag=$tag;mode=$mode}
+      $canonical=[ordered]@{engine=$engine;engine_sha256=$engineHash;recipe=$recipe;source_type=$sourceType;version=$version;tag=$tag;mode=$mode}
       $fingerprint=TextHash ($canonical|ConvertTo-Json -Depth 20 -Compress)
-      $artifactName="$name-$version-$($fingerprint.Substring(0,12))-windows-x64.7z"
+      $artifactName="$name-$version-$($fingerprint.Substring(0,12))-windows-x64.zip"
       $releaseTag="$name-v$version"
       $published=$null
       if($mode-in@("cloud","hybrid")-and-not$force){
@@ -314,15 +322,30 @@ function Build-CloudPackage {
 
 function Invoke-BuildPhase {
   param([object[]]$Plans)
+  if($PackageName){
+    $allPlans=@($Plans);$allByName=@{};foreach($candidate in $allPlans){$allByName[$candidate.name]=$candidate}
+    if(-not$allByName.ContainsKey($PackageName)){throw "Planned package '$PackageName' was not found."}
+    $selected=[Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase);$null=$selected.Add($PackageName)
+    $pending=[Collections.Generic.Queue[string]]::new();$pending.Enqueue($PackageName)
+    while($pending.Count){
+      $current=$pending.Dequeue()
+      foreach($dependency in @(Get-Prop $allByName[$current].recipe "tool_dependencies" @())){
+        if(-not$allByName.ContainsKey([string]$dependency)){throw "Missing tool dependency '$dependency'."}
+        if($selected.Add([string]$dependency)){$pending.Enqueue([string]$dependency)}
+      }
+    }
+    $Plans=@($allPlans|Where-Object{$selected.Contains([string]$_.name)})
+  }
   $levels=Get-DependencyLevels @($Plans|ForEach-Object{$_.recipe})
   $byName=@{};foreach($plan in $Plans){$byName[$plan.name]=$plan}
   $stageRoot=[IO.Path]::GetFullPath($StageDir);$null=New-Item -ItemType Directory -Force -Path $stageRoot
+  $activeBuildCount=[Math]::Max(1,@($Plans|Where-Object needs_build).Count)
   $requiredToolNames=@($Plans|Where-Object needs_build|ForEach-Object{@(Get-Prop $_.recipe "tool_dependencies" @())}|Sort-Object -Unique)
   $all=[Collections.Generic.List[object]]::new()
   foreach($level in $levels){
     $levelPlans=@($level|ForEach-Object{$byName[$_]})
     $results=@($levelPlans|ForEach-Object -Parallel {
-      $plan=$_;$stageRoot=$using:stageRoot;$cacheRoot=[IO.Path]::GetFullPath($using:CacheDir);$throttle=$using:ThrottleLimit;$requiredToolNames=$using:requiredToolNames
+      $plan=$_;$stageRoot=$using:stageRoot;$cacheRoot=[IO.Path]::GetFullPath($using:CacheDir);$activeBuildCount=$using:activeBuildCount;$requiredToolNames=$using:requiredToolNames
       function Prop{param([object]$o,[string]$n,$d=$null);$p=$o.PSObject.Properties[$n];if($null-eq$p-or$null-eq$p.Value){return $d};return $p.Value}
       function Hash{param([string]$p);$s=[IO.File]::OpenRead($p);try{return [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($s)).ToLowerInvariant()}finally{$s.Dispose()}}
       function Cmd{param([string]$f,[string[]]$a);&$f @a 2>&1|Out-Host;if($LASTEXITCODE-ne0){throw "'$f' failed: $LASTEXITCODE"}}
@@ -362,11 +385,11 @@ function Invoke-BuildPhase {
           Push-Location $packageDir
           try{
             switch($type){
-              "python"{$wheel=Join-Path $packageDir ".meta\wheelhouse";$null=New-Item -ItemType Directory -Force -Path $wheel;if(Test-Path "requirements.txt"){Cmd "python" @("-m","pip","download","--dest",$wheel,"-r","requirements.txt")};Cmd "python" @("-m","pip","download","--dest",$wheel,"pyinstaller")}
-              "node"{Cmd "corepack" @("enable");Cmd "pnpm" @("fetch","--prod","--frozen-lockfile")}
-              "bun"{Cmd "bun" @("install","--frozen-lockfile","--ignore-scripts")}
+              "python"{$wheel=Join-Path $packageDir ".meta\wheelhouse";$null=New-Item -ItemType Directory -Force -Path $wheel;if(Test-Path "requirements.txt"){Cmd "python" @("-m","pip","download","--disable-pip-version-check","--dest",$wheel,"-r","requirements.txt")};Cmd "python" @("-m","pip","download","--disable-pip-version-check","--dest",$wheel,"pyinstaller")}
+              "node"{$store=Join-Path $packageDir ".meta\pnpm-store";Cmd "corepack" @("enable");Cmd "pnpm" @("fetch","--prod","--frozen-lockfile","--store-dir",$store)}
+              "bun"{$bunCache=Join-Path $packageDir ".meta\bun-cache";$old=$env:BUN_INSTALL_CACHE_DIR;$env:BUN_INSTALL_CACHE_DIR=$bunCache;try{Cmd "bun" @("install","--frozen-lockfile","--ignore-scripts")}finally{$env:BUN_INSTALL_CACHE_DIR=$old}}
               "go"{Cmd "go" @("mod","vendor")}
-              "rust"{Cmd "cargo" @("vendor",(Join-Path $packageDir "vendor"))}
+              "rust"{$vendor=Join-Path $packageDir "vendor";Cmd "cargo" @("vendor",$vendor);$cargoDir=Join-Path $packageDir ".cargo";$null=New-Item -ItemType Directory -Force -Path $cargoDir;@('[source.crates-io]','replace-with = "vendored-sources"','[source.vendored-sources]','directory = "vendor"')|Set-Content -LiteralPath (Join-Path $cargoDir "config.toml") -Encoding utf8}
             }
           }finally{Pop-Location}
         }else{
@@ -386,8 +409,8 @@ function Invoke-BuildPhase {
         Get-ChildItem $packageDir -Recurse -Force|Where-Object{$_.Name-match"(?i)^(test|tests|docs|__pycache__)$|\.(map|pdb|d\.ts|pyc)$"}|Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
         if(-not(Get-ChildItem $packageDir -File -Recurse|Select-Object -First 1)){throw "Empty package"}
         $archive=Join-Path $outputDir $plan.artifact_name
-        $level=[int](Prop $plan.recipe "compression_level" 7);$threads=[Math]::Max(1,[int]([Environment]::ProcessorCount/[Math]::Max(1,$throttle)))
-        Cmd "7z" @("a","-t7z","-mx=$level","-m0=lzma2","-ms=on","-mqs=on","-mmt=$threads",$archive,(Join-Path $packageDir "*"))
+        $level=[int](Prop $plan.recipe "compression_level" 5);$threads=[Math]::Max(1,[int]([Environment]::ProcessorCount/[Math]::Max(1,$activeBuildCount)))
+        Cmd "7z" @("a","-tzip","-mx=$level","-mm=Deflate","-mmt=$threads",$archive,(Join-Path $packageDir "*"))
         [pscustomobject]@{name=$plan.name;status="built";archive=$plan.artifact_name;hash=(Hash $archive);bootstrap_path=$bootstrapPath;error=$null}
       }catch{[pscustomobject]@{name=$plan.name;status="failed";archive="";hash="";bootstrap_path="";error=$_.Exception.Message}}
       finally{Remove-Item $work -Recurse -Force -ErrorAction SilentlyContinue}
@@ -418,7 +441,7 @@ function Get-LocalCommands {
       $pip='& "$dir\.meta\venv\Scripts\python.exe" -m pip install --disable-pip-version-check'
       if($offline){$pip+=' --no-index --find-links "$dir\.meta\wheelhouse"'}
       $commands.Add($pip+' pyinstaller')
-      $commands.Add(($pip+' -r requirements.txt'))
+      $commands.Add(('if (Test-Path -LiteralPath "$dir\requirements.txt") {{ {0} -r "$dir\requirements.txt" }}' -f $pip))
       $commands.Add(('& "$dir\.meta\venv\Scripts\python.exe" -m PyInstaller --noconfirm --clean --onefile --name "{0}" --distpath "$dir" "{1}"' -f $name,$entry))
     }
     "go"{$vendor=if($offline){"-mod=vendor "}else{""};$commands.Add(('go build {0}-trimpath -ldflags="-s -w" -o "$dir\{1}.exe" .' -f $vendor,$name))}
@@ -428,10 +451,10 @@ function Get-LocalCommands {
       $commands.Add(('Copy-Item -LiteralPath "{0}" -Destination "$dir\{1}.exe" -Force' -f $output,$name))
     }
     "node"{
-      $commands.Add("corepack enable");$install=if($offline){"pnpm install --offline --frozen-lockfile"}else{"pnpm install --frozen-lockfile"};$commands.Add($install);$commands.Add("pnpm run build")
+      $commands.Add("corepack enable");$install=if($offline){'pnpm install --offline --frozen-lockfile --store-dir "$dir\.meta\pnpm-store"'}else{"pnpm install --frozen-lockfile"};$commands.Add($install);$commands.Add("pnpm run build")
       $commands.Add(('@("@echo off", ''node "%~dp0build\server\index.js" %*'') | Set-Content -LiteralPath "$dir\{0}.cmd" -Encoding ascii' -f $name))
     }
-    "bun"{$commands.Add("bun install --frozen-lockfile");$commands.Add("bun run build")}
+    "bun"{if($offline){$commands.Add('$env:BUN_INSTALL_CACHE_DIR = "$dir\.meta\bun-cache"');$commands.Add("bun install --offline --frozen-lockfile")}else{$commands.Add("bun install --frozen-lockfile")};$commands.Add("bun run build")}
     "powershell"{}
     default{throw "Local/hybrid recipe '$name' requires build_type or local_commands."}
   }
@@ -453,12 +476,47 @@ function Get-ToolDepends {
 
 function Invoke-FinalizePhase {
   param([object[]]$Plans)
-  $stageResultsPath=Join-Path ([IO.Path]::GetFullPath($StageDir)) "results.json"
   $results=@{}
-  if(Test-Path $stageResultsPath){foreach($r in @((Get-Content $stageResultsPath -Raw|ConvertFrom-Json).results)){$results[$r.name]=$r}}
+  foreach($stageResultsPath in @(Get-ChildItem -LiteralPath ([IO.Path]::GetFullPath($StageDir)) -Filter "results.json" -File -Recurse -ErrorAction SilentlyContinue)){
+    foreach($r in @((Get-Content $stageResultsPath.FullName -Raw|ConvertFrom-Json).results)){$results[$r.name]=$r}
+  }
   $headers=Get-Headers;$targetRepo=if($env:GITHUB_REPOSITORY){$env:GITHUB_REPOSITORY}else{"Anri2021/scoop-bucket"}
   $null=New-Item -ItemType Directory -Force -Path $BucketDir
   $lockPackages=[ordered]@{}
+  $staged=@{}
+  foreach($plan in @($Plans|Where-Object needs_build)){
+    $result=$results[$plan.name]
+    if(-not$result-or$result.status-ne"built"){throw "Missing build result for '$($plan.name)'."}
+    $archive=Get-ChildItem -LiteralPath $StageDir -Filter $result.archive -File -Recurse|Select-Object -First 1
+    if(-not$archive){throw "Missing staged archive '$($result.archive)'."}
+    if((Get-FileSha256 $archive.FullName)-ne$result.hash){throw "Staged archive hash mismatch for '$($plan.name)'."}
+    $staged[$plan.name]=$archive.FullName
+  }
+  if(-not$NoPublish-and$staged.Count){
+    $publishItems=@($Plans|Where-Object needs_build|ForEach-Object{[pscustomobject]@{name=$_.name;release_tag=$_.release_tag;version=$_.version;fingerprint=$_.fingerprint;archive=$staged[$_.name]}})
+    $publishResults=@($publishItems|ForEach-Object -Parallel {
+      $item=$_;$repo=$using:targetRepo
+      function Gh{param([string[]]$Arguments);& gh @Arguments 2>&1|Out-Host;if($LASTEXITCODE-ne0){throw "gh failed with code $LASTEXITCODE"}}
+      try{
+        & gh release view $item.release_tag --repo $repo 2>$null 1>$null
+        if($LASTEXITCODE-ne0){Gh @("release","create",$item.release_tag,"--repo",$repo,"--title","$($item.name) $($item.version)","--notes","Meta-Bucket build $($item.fingerprint).")}
+        Gh @("release","upload",$item.release_tag,$item.archive,"--repo",$repo,"--clobber")
+        [pscustomobject]@{name=$item.name;error=$null}
+      }catch{[pscustomobject]@{name=$item.name;error=$_.Exception.Message}}
+    } -ThrottleLimit ([Math]::Min(6,$publishItems.Count)))
+    $publishErrors=@($publishResults|Where-Object error)
+    if($publishErrors){throw(($publishErrors|ForEach-Object{"[$($_.name)] $($_.error)"})-join[Environment]::NewLine)}
+    foreach($item in $publishItems){
+      $current=[IO.Path]::GetFileName($item.archive);$prefix="$($item.name)-$($item.version)-"
+      $assetNames=@(& gh release view $item.release_tag --repo $targetRepo --json assets --jq '.assets[].name')
+      if($LASTEXITCODE-ne0){throw "Unable to enumerate assets for '$($item.name)'."}
+      foreach($assetName in $assetNames){
+        if($assetName.StartsWith($prefix,[StringComparison]::OrdinalIgnoreCase)-and$assetName-ne$current){
+          Invoke-Checked "gh" @("release","delete-asset",$item.release_tag,$assetName,"--repo",$targetRepo,"--yes")
+        }
+      }
+    }
+  }
   foreach($plan in $Plans|Sort-Object name){
     $urls=@();$hashes=@();$extractDir=""
     if($plan.mode-eq"upstream"){$urls=@($plan.upstream_urls);$hashes=@($plan.upstream_hashes);$extractDir=[string](Get-Prop $plan.recipe "extract_dir" "")}
@@ -466,14 +524,8 @@ function Invoke-FinalizePhase {
     else{
       if($plan.needs_build){
         $result=$results[$plan.name];if(-not$result-or$result.status-ne"built"){throw "Missing build result for '$($plan.name)'."}
-        $archive=Get-ChildItem -LiteralPath $StageDir -Filter $result.archive -File -Recurse|Select-Object -First 1;if(-not$archive){throw "Missing staged archive '$($result.archive)'."}
-        if($NoPublish){$urls=@($archive.FullName)}
-        else{
-          $exists=$false;try{$null=Invoke-Checked "gh" @("release","view",$plan.release_tag,"--repo",$targetRepo);$exists=$true}catch{}
-          if($exists){Invoke-Checked "gh" @("release","upload",$plan.release_tag,$archive.FullName,"--repo",$targetRepo,"--clobber")}
-          else{Invoke-Checked "gh" @("release","create",$plan.release_tag,$archive.FullName,"--repo",$targetRepo,"--title","$($plan.name) $($plan.version)","--notes","Meta-Bucket build $($plan.fingerprint).")}
-          $urls=@("https://github.com/$targetRepo/releases/download/$($plan.release_tag)/$($plan.artifact_name)")
-        }
+        $archive=[IO.FileInfo]::new([string]$staged[$plan.name])
+        if($NoPublish){$urls=@($archive.FullName)}else{$urls=@("https://github.com/$targetRepo/releases/download/$($plan.release_tag)/$($plan.artifact_name)")}
         $hashes=@($result.hash)
       }else{$urls=@($plan.published_url);$hashes=@($plan.published_hash)}
     }
@@ -509,8 +561,8 @@ $recipes=@($config.recipes);Assert-Recipes $recipes
 $targetRepository=if($env:GITHUB_REPOSITORY){$env:GITHUB_REPOSITORY}else{"Anri2021/scoop-bucket"}
 
 if($Phase-in@("Plan","All")){
-  $plans=Resolve-Plans $recipes $targetRepository $EngineVersion -Force:$ForceRebuild
-  $planDocument=[ordered]@{engine_version=$EngineVersion;recipes_sha256=(Get-FileSha256 $RecipesPath);packages=$plans}
+  $plans=Resolve-Plans $recipes $targetRepository $EngineVersion $PipelineSha256 -Force:$ForceRebuild
+  $planDocument=[ordered]@{engine_version=$EngineVersion;engine_sha256=$EngineSha256;pipeline_sha256=$PipelineSha256;recipes_sha256=(Get-FileSha256 $RecipesPath);packages=$plans}
   Write-Utf8Json $PlanPath $planDocument 30
   $plans|Format-Table name,version,mode,reason,needs_build -AutoSize
   if($ValidateOnly){exit 0}
@@ -519,6 +571,8 @@ if($Phase-in@("Build","Finalize")){
   if(-not(Test-Path $PlanPath)){throw "Plan not found: $PlanPath"}
   $planDocument=Get-Content $PlanPath -Raw -Encoding utf8|ConvertFrom-Json
   if($planDocument.engine_version-ne$EngineVersion){throw "Plan engine version mismatch."}
+  if($planDocument.engine_sha256-ne$EngineSha256){throw "Plan engine fingerprint mismatch."}
+  if($planDocument.pipeline_sha256-ne$PipelineSha256){throw "Plan pipeline fingerprint mismatch."}
   $plans=@($planDocument.packages)
 }
 if($Phase-in@("Build","All")){Invoke-BuildPhase $plans}

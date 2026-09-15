@@ -7,32 +7,32 @@
       "tag": "bun-v1.4.2",
       "mode": "upstream",
       "reason": "explicit:upstream",
-      "fingerprint": "7f13dbda4cdea82b41965614feea4140c4cc32203239d864d54eeef99970c518",
-      "artifact": "bun-1.4.2-7f13dbda4cde-windows-x64.zip"
+      "fingerprint": "43fa6746cd44e1f39f858f33c1857da4c8baa14ff223ac27f6760dc3eb4a44ec",
+      "artifact": "bun-1.4.2-43fa6746cd44-windows-x64.zip"
     },
     "ddns-dynu": {
       "version": "1.0.2",
       "tag": "v1.0.2",
       "mode": "upstream",
       "reason": "explicit:upstream",
-      "fingerprint": "6c4cbd80d88a4ecb6e35b24c1ad705cb0df83476b2a03b2f6699f7e74fe1005c",
-      "artifact": "ddns-dynu-1.0.2-6c4cbd80d88a-windows-x64.zip"
+      "fingerprint": "531b2f4e4a9a6adeaeba8e05dc93ee2316c89f8765b1d824197f70f3c28dd135",
+      "artifact": "ddns-dynu-1.0.2-531b2f4e4a9a-windows-x64.zip"
     },
     "headplane": {
       "version": "0.7.1",
       "tag": "v0.7.1",
       "mode": "cloud",
       "reason": "explicit:cloud",
-      "fingerprint": "8b0d9110190245c86441b2ecb1604a3a2bf072658d036fbdf8e10d4e96ee567d",
-      "artifact": "headplane-0.7.1-8b0d91101902-windows-x64.zip"
+      "fingerprint": "02b0baa26811405b410edc82468114ec99746055aa31ddef8c35609634b45276",
+      "artifact": "headplane-0.7.1-02b0baa26811-windows-x64.zip"
     },
     "ipv6-advertiser": {
       "version": "1.0.2",
       "tag": "v1.0.2",
       "mode": "cloud",
       "reason": "explicit:cloud",
-      "fingerprint": "295290a150ba39bf084b515e3295d54b801f779dcd9115775cc2981dd081dfdd",
-      "artifact": "ipv6-advertiser-1.0.2-295290a150ba-windows-x64.zip"
+      "fingerprint": "acda0e534e07f3a17049e2981ed5cf56ee74b777cf40e253fa8b36ab09435f79",
+      "artifact": "ipv6-advertiser-1.0.2-acda0e534e07-windows-x64.zip"
     }
   }
 }

@@ -3,8 +3,8 @@
   "description": "OpenID Connect (OIDC) and OAuth 2.0 Identity Provider",
   "homepage": "https://dexidp.com/",
   "license": "Apache-2.0",
-  "url": "https://github.com/Anri2021/scoop-bucket/releases/download/dex-v2.45.1/dex-2.45.1-44a6767a44cb-windows-x64.zip",
-  "hash": "432c053a85cf6deaf6e93703c9545f58671ea81255f08f872e6e4f835503b56c",
+  "url": "https://github.com/Anri2021/scoop-bucket/releases/download/dex-v2.45.1/dex-2.45.1-07d77ee180f1-windows-x64.zip",
+  "hash": "0d87e7fd0d8bb2be61f04e186c44f6aa541522c51d4b1348312f362ab8ea1ba6",
   "bin": "dex.exe",
   "persist": "config.yaml"
 }

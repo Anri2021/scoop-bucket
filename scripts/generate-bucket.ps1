@@ -409,10 +409,11 @@ function Invoke-BuildPhase {
                 $oldPyPath = $env:PYTHONPATH
                 $env:PYTHONPATH = "$PWD;$env:PYTHONPATH"
                 try {
-                  $pkgNorm = $packageDir -replace '\\', '/'
-                  $entryNorm = $entry -replace '\\', '/'
-                  $pyCmd = "import sys, PyInstaller.__main__; sys.setrecursionlimit(5000); args=['--noconfirm','--clean','--onefile','--name','$($plan.name)','--distpath','$pkgNorm']; " + (if(Test-Path $plan.name){"args+=['--collect-all','$($plan.name)']; "}else{""}) + "args+=['$entryNorm']; PyInstaller.__main__.run(args)"
-                  Cmd "python" @("-c", $pyCmd)
+                  $pyRunner = "import sys, PyInstaller.__main__; sys.setrecursionlimit(5000); PyInstaller.__main__.run(sys.argv[1:])"
+                  $pyArgs = @("-c", $pyRunner, "--noconfirm", "--clean", "--onefile", "--name", $plan.name, "--distpath", $packageDir)
+                  if(Test-Path $plan.name){ $pyArgs += @("--collect-all", $plan.name) }
+                  $pyArgs += $entry
+                  Cmd "python" $pyArgs
                 } finally {
                   $env:PYTHONPATH = $oldPyPath
                 }

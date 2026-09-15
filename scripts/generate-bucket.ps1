@@ -306,7 +306,7 @@ function Invoke-BuildPhase {
           Push-Location $packageDir
           try{
             switch($type){
-              "python"{$wheel=Join-Path $packageDir ".meta\wheelhouse";$null=New-Item -ItemType Directory -Force -Path $wheel;if(Test-Path "requirements.txt"){Cmd "python" @("-m","pip","download","--disable-pip-version-check","--dest",$wheel,"-r","requirements.txt")};Cmd "python" @("-m","pip","download","--disable-pip-version-check","--dest",$wheel,"pyinstaller")}
+              "python"{$wheel=Join-Path $packageDir ".meta\wheelhouse";$null=New-Item -ItemType Directory -Force -Path $wheel;if(Test-Path "requirements.txt"){Cmd "python" @("-m","pip","download","--disable-pip-version-check","--dest",$wheel,"-r","requirements.txt")}}
               "node"{$store=Join-Path $packageDir ".meta\pnpm-store";Cmd "corepack" @("enable");Cmd "pnpm" @("fetch","--prod","--frozen-lockfile","--store-dir",$store)}
               "bun"{$bunCache=Join-Path $packageDir ".meta\bun-cache";$old=$env:BUN_INSTALL_CACHE_DIR;$env:BUN_INSTALL_CACHE_DIR=$bunCache;try{Cmd "bun" @("install","--frozen-lockfile","--ignore-scripts")}finally{$env:BUN_INSTALL_CACHE_DIR=$old}}
               "go"{Cmd "go" @("mod","vendor")}

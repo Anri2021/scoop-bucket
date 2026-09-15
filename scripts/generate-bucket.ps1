@@ -427,18 +427,43 @@ function Invoke-BuildPhase {
               "node"{
                 Cmd "corepack" @("enable")
                 if(Test-Path "pnpm-lock.yaml"){Cmd "pnpm" @("install","--frozen-lockfile");Cmd "pnpm" @("run","build")}else{Cmd "npm" @("install","--ignore-scripts");Cmd "npm" @("run","build")}
+                $shouldBundle = [bool](Prop $plan.recipe "bundle" $true)
+                $entry = [string](Prop $plan.recipe "entrypoint" "")
+                if(-not $entry){
+                  if(Test-Path "build/server/index.js"){ $entry = "build/server/index.js" }
+                  elseif(Test-Path "dist/index.js"){ $entry = "dist/index.js" }
+                  elseif(Test-Path "bin/repomix.cjs"){ $entry = "bin/repomix.cjs" }
+                  else{ $entry = "index.js" }
+                }
                 $extraDirs = @(Prop $plan.recipe "output_dirs" @())
-                $targets = @("bin","build","dist","drizzle","lib","package.json","package-lock.json","pnpm-lock.yaml") + $extraDirs
-                foreach($p in ($targets | Select-Object -Unique)){if(Test-Path $p){Copy-Item $p $packageDir -Recurse -Force}}
-                Push-Location $packageDir;try{if(Test-Path "pnpm-lock.yaml"){Cmd "pnpm" @("install","--prod","--frozen-lockfile")}else{Cmd "npm" @("install","--omit=dev","--ignore-scripts","--no-audit","--no-fund")}}finally{Pop-Location}
-                $entry=[string](Prop $plan.recipe "entrypoint" "build/server/index.js");$cmdTarget=($entry -replace '/','\')
-                @("@echo off",('node "%~dp0{0}" %*' -f $cmdTarget))|Set-Content (Join-Path $packageDir "$($plan.name).cmd") -Encoding ascii
+                if($shouldBundle -and (Test-Path $entry)){
+                  $bundleDir = Join-Path $packageDir "bundle"
+                  $nccCmd = if(Get-Command ncc -ErrorAction SilentlyContinue){ "ncc" } else { "npx" }
+                  $nccArgs = if($nccCmd -eq "ncc"){ @("build", $entry, "-o", $bundleDir, "--minify") } else { @("--yes", "@vercel/ncc", "build", $entry, "-o", $bundleDir, "--minify") }
+                  Cmd $nccCmd $nccArgs
+                  $targets = @("build/client", "drizzle", "public", "static") + $extraDirs
+                  foreach($p in ($targets | Select-Object -Unique)){
+                    if(Test-Path $p){
+                      $dest = Join-Path $packageDir $p
+                      $null = New-Item -ItemType Directory -Force -Path ([IO.Path]::GetDirectoryName($dest))
+                      Copy-Item $p $dest -Recurse -Force
+                    }
+                  }
+                  @("@echo off", 'cd /d "%~dp0"', 'node "%~dp0bundle\index.js" %*') | Set-Content (Join-Path $packageDir "$($plan.name).cmd") -Encoding ascii
+                } 
+                else{
+                  $targets = @("bin","build","dist","drizzle","lib","package.json","package-lock.json","pnpm-lock.yaml") + $extraDirs
+                  foreach($p in ($targets | Select-Object -Unique)){if(Test-Path $p){Copy-Item $p $packageDir -Recurse -Force}}
+                  Push-Location $packageDir;try{if(Test-Path "pnpm-lock.yaml"){Cmd "pnpm" @("install","--prod","--frozen-lockfile","--config.node-linker=hoisted")}else{Cmd "npm" @("install","--omit=dev","--ignore-scripts","--no-audit","--no-fund")}}finally{Pop-Location}
+                  $cmdTarget = ($entry -replace '/','\')
+                  @("@echo off", 'cd /d "%~dp0"', ('node "%~dp0{0}" %*' -f $cmdTarget)) | Set-Content (Join-Path $packageDir "$($plan.name).cmd") -Encoding ascii
+                }
               }
               "bun"{Cmd "bun" @("install","--frozen-lockfile");Cmd "bun" @("run","build");$out=[string](Prop $plan.recipe "output_path" "dist");Copy-Item $out $packageDir -Recurse -Force}
               "powershell"{$entry=[string](Prop $plan.recipe "entrypoint" (Prop $plan.recipe "bin"));Copy-Item $entry $packageDir}
               default{throw "Unsupported build_type '$type'"}
             }
-          }finally{Pop-Location}
+          } finally{Pop-Location}
         }
         Get-ChildItem $packageDir -Recurse -Force | Where-Object {
   				$_.Name -match "(?i)^(test|tests|docs|__pycache__)$|\.(map|pdb|d\.ts|pyc|so|dylib)$" -or

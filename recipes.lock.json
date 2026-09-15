@@ -1,0 +1,70 @@
+{
+  "engine_version": "4.0",
+  "recipes_sha256": "8eb31f6ee8c05a4ef6aef62fef7d8108edd59176b4b11097e899731b2c2145eb",
+  "packages": {
+    "bun": {
+      "version": "1.4.2",
+      "tag": "bun-v1.4.2",
+      "mode": "upstream",
+      "reason": "explicit:upstream",
+      "fingerprint": "ce1e4c8d7a17f5050f5273b05eb620cc961df0d441c6d0c0e41589c429b2d24e",
+      "artifact": "bun-1.4.2-ce1e4c8d7a17-windows-x64.zip"
+    },
+    "ddns-dynu": {
+      "version": "1.0.2",
+      "tag": "v1.0.2",
+      "mode": "upstream",
+      "reason": "explicit:upstream",
+      "fingerprint": "6bbaa361dbd40df8ebdd01e4e60b36589c945604b329a169e5d664c809b90ca7",
+      "artifact": "ddns-dynu-1.0.2-6bbaa361dbd4-windows-x64.zip"
+    },
+    "dex": {
+      "version": "2.45.1",
+      "tag": "v2.45.1",
+      "mode": "cloud",
+      "reason": "explicit:cloud",
+      "fingerprint": "080b56fda3fb75359b35fd708679de6eb5b28b5b85c5f0a7a301f071215ee522",
+      "artifact": "dex-2.45.1-080b56fda3fb-windows-x64.zip"
+    },
+    "headplane": {
+      "version": "0.7.1",
+      "tag": "v0.7.1",
+      "mode": "cloud",
+      "reason": "explicit:cloud",
+      "fingerprint": "f409fa14a3bb6f8a917921b4bc2ee1ec18b10008768991d226795fd38216e7da",
+      "artifact": "headplane-0.7.1-f409fa14a3bb-windows-x64.zip"
+    },
+    "headscale": {
+      "version": "0.29.3",
+      "tag": "v0.29.3",
+      "mode": "cloud",
+      "reason": "explicit:cloud",
+      "fingerprint": "643a0cc04c4395ebf74c044edef80cf987571657ea767197878281c0de084ed5",
+      "artifact": "headscale-0.29.3-643a0cc04c43-windows-x64.zip"
+    },
+    "ipv6-advertiser": {
+      "version": "1.0.2",
+      "tag": "v1.0.2",
+      "mode": "cloud",
+      "reason": "explicit:cloud",
+      "fingerprint": "bb5c4adcfea7f58c903d5f034c9224b1aa73c8c15d209b29a511a56eb6073d2f",
+      "artifact": "ipv6-advertiser-1.0.2-bb5c4adcfea7-windows-x64.zip"
+    },
+    "repomix": {
+      "version": "1.18.0",
+      "tag": "v1.18.0",
+      "mode": "cloud",
+      "reason": "explicit:cloud",
+      "fingerprint": "4885a3d20effbcb68a6c332b3dde704f453f5ca7283b905df57fc5671b625109",
+      "artifact": "repomix-1.18.0-4885a3d20eff-windows-x64.zip"
+    },
+    "scapy": {
+      "version": "2.7.0",
+      "tag": "v2.7.0",
+      "mode": "cloud",
+      "reason": "explicit:cloud",
+      "fingerprint": "2594574ea30a624332a3a44f3e365ff3d65048b3446929843d472889a0da197b",
+      "artifact": "scapy-2.7.0-2594574ea30a-windows-x64.zip"
+    }
+  }
+}

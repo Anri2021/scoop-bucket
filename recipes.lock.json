@@ -19,12 +19,12 @@
       "artifact": "caddy-2.11.4-fd28c505266f-windows-x64.zip"
     },
     "ddns-dynu": {
-      "version": "1.1.0",
-      "tag": "v1.1.0",
+      "version": "1.1.1",
+      "tag": "v1.1.1",
       "mode": "upstream",
       "reason": "explicit:upstream",
-      "fingerprint": "85dedd9a275d53858b4cbc4b65125081dc42f03703664d60cf0d43014d4d2874",
-      "artifact": "ddns-dynu-1.1.0-85dedd9a275d-windows-x64.zip"
+      "fingerprint": "e18afaba2d57fe028107e447027c3f39259525f3a91917ee3bebf0d2d6784fe5",
+      "artifact": "ddns-dynu-1.1.1-e18afaba2d57-windows-x64.zip"
     },
     "dex": {
       "version": "2.45.1",

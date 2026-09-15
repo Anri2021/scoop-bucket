@@ -303,7 +303,7 @@ function Build-CloudPackage {
         if(Test-Path "requirements.txt"){Invoke-Checked "python" @("-m","pip","install","--disable-pip-version-check","-r","requirements.txt")}
         Invoke-Checked "python" @("-m","PyInstaller","--noconfirm","--clean","--onefile","--name",$Plan.name,"--distpath",$PackageDir,$entry)
       }
-      "go"{Invoke-Checked "go" @("build","-trimpath","-ldflags=-s -w","-o",(Join-Path $PackageDir "$($Plan.name).exe"),".")}
+      "go"{$entry=[string](Get-Prop $Plan.recipe "entrypoint" ".");Invoke-Checked "go" @("build","-trimpath","-ldflags=-s -w","-o",(Join-Path $PackageDir "$($Plan.name).exe"),$entry)}
       "rust"{Invoke-Checked "cargo" @("build","--locked","--release");Get-ChildItem "target\release\*.exe" -File|Copy-Item -Destination $PackageDir}
       "node"{
         Invoke-Checked "corepack" @("enable");Invoke-Checked "pnpm" @("install","--frozen-lockfile");Invoke-Checked "pnpm" @("run","build")
@@ -400,7 +400,7 @@ function Invoke-BuildPhase {
           try{
             switch($type){
               "python"{$entry=[string](Prop $plan.recipe "entrypoint" "");if(-not$entry){$entry=(Get-ChildItem *.py -File|Select-Object -First 1).Name};if(Test-Path "requirements.txt"){Cmd "python" @("-m","pip","install","-r","requirements.txt")};Cmd "python" @("-m","PyInstaller","--noconfirm","--clean","--onefile","--name",$plan.name,"--distpath",$packageDir,$entry)}
-              "go"{Cmd "go" @("build","-trimpath","-ldflags=-s -w","-o",(Join-Path $packageDir "$($plan.name).exe"),".")}
+              "go"{$entry=[string](Prop $plan.recipe "entrypoint" ".");Cmd "go" @("build","-trimpath","-ldflags=-s -w","-o",(Join-Path $packageDir "$($plan.name).exe"),$entry)}
               "rust"{Cmd "cargo" @("build","--locked","--release");Get-ChildItem "target\release\*.exe" -File|Copy-Item -Destination $packageDir}
               "node"{Cmd "corepack" @("enable");Cmd "pnpm" @("install","--frozen-lockfile");Cmd "pnpm" @("run","build");foreach($p in @("build","dist","drizzle","package.json","pnpm-lock.yaml")){if(Test-Path $p){Copy-Item $p $packageDir -Recurse -Force}};Push-Location $packageDir;try{if(Test-Path "pnpm-lock.yaml"){Cmd "pnpm" @("install","--prod","--frozen-lockfile")}}finally{Pop-Location};@("@echo off",'node "%~dp0build\server\index.js" %*')|Set-Content (Join-Path $packageDir "$($plan.name).cmd") -Encoding ascii}
               "bun"{Cmd "bun" @("install","--frozen-lockfile");Cmd "bun" @("run","build");$out=[string](Prop $plan.recipe "output_path" "dist");Copy-Item $out $packageDir -Recurse -Force}
@@ -447,7 +447,7 @@ function Get-LocalCommands {
       $commands.Add(('if (Test-Path -LiteralPath "$dir\requirements.txt") {{ {0} -r "$dir\requirements.txt" }}' -f $pip))
       $commands.Add(('& "$dir\.meta\venv\Scripts\python.exe" -m PyInstaller --noconfirm --clean --onefile --name "{0}" --distpath "$dir" "{1}"' -f $name,$entry))
     }
-    "go"{$vendor=if($offline){"-mod=vendor "}else{""};$commands.Add(('go build {0}-trimpath -ldflags="-s -w" -o "$dir\{1}.exe" .' -f $vendor,$name))}
+    "go"{$entry=[string](Get-Prop $Plan.recipe "entrypoint" ".");$vendor=if($offline){"-mod=vendor "}else{""};$commands.Add(('go build {0}-trimpath -ldflags="-s -w" -o "$dir\{1}.exe" {2}' -f $vendor,$name,$entry))}
     "rust"{
       $flag=if($offline){" --offline"}else{""};$commands.Add("cargo build --locked --release$flag")
       $output=[string](Get-Prop $Plan.recipe "local_output" "target\release\$name.exe")

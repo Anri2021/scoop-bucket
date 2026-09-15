@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Meta-Bucket v3: deterministic planner, tiered parallel builder and privileged finalizer.
+  Meta-Bucket v4: deterministic planner, distributed builder and transactional finalizer.
 #>
 [CmdletBinding()]
 param(
@@ -410,7 +410,7 @@ function Invoke-BuildPhase {
         if(-not(Get-ChildItem $packageDir -File -Recurse|Select-Object -First 1)){throw "Empty package"}
         $archive=Join-Path $outputDir $plan.artifact_name
         $level=[int](Prop $plan.recipe "compression_level" 5);$threads=[Math]::Max(1,[int]([Environment]::ProcessorCount/[Math]::Max(1,$activeBuildCount)))
-        Cmd "7z" @("a","-tzip","-mx=$level","-mm=Deflate","-mqs=on","-mmt=$threads",$archive,(Join-Path $packageDir "*"))
+        Cmd "7z" @("a","-tzip","-mx=$level","-mm=Deflate","-mmt=$threads",$archive,(Join-Path $packageDir "*"))
         [pscustomobject]@{name=$plan.name;status="built";archive=$plan.artifact_name;hash=(Hash $archive);bootstrap_path=$bootstrapPath;error=$null}
       }catch{[pscustomobject]@{name=$plan.name;status="failed";archive="";hash="";bootstrap_path="";error=$_.Exception.Message}}
       finally{Remove-Item $work -Recurse -Force -ErrorAction SilentlyContinue}

@@ -241,88 +241,6 @@ function Resolve-Plans {
   return @($results|Sort-Object name)
 }
 
-function Expand-Source {
-  param([object]$Plan,[string]$Destination)
-  $extension=if($Plan.source_url-match"(?i)\.zip($|\?)"){".zip"}else{".archive"}
-  $archive=Join-Path ([IO.Path]::GetFullPath($CacheDir)) ("source-"+$Plan.fingerprint+$extension)
-  $null=Get-CachedFile $Plan.source_url $archive $Plan.source_hash
-  $null=New-Item -ItemType Directory -Force -Path $Destination
-  if($extension-eq".zip"){Expand-Archive -LiteralPath $archive -DestinationPath $Destination -Force}
-  else{Invoke-Checked "tar" @("-xf",$archive,"-C",$Destination)}
-  $root=Get-ChildItem -LiteralPath $Destination -Directory|Select-Object -First 1
-  if($root){return $root.FullName}
-  return $Destination
-}
-
-function Get-BuildType {
-  param([object]$Plan,[string]$SourceRoot)
-  $type=([string](Get-Prop $Plan.recipe "build_type" "auto")).ToLowerInvariant()
-  if($type-ne"auto"){return $type}
-  if(Test-Path (Join-Path $SourceRoot "pyproject.toml")){return "python"}
-  if(Test-Path (Join-Path $SourceRoot "requirements.txt")){return "python"}
-  if(Test-Path (Join-Path $SourceRoot "package.json")){return "node"}
-  if(Test-Path (Join-Path $SourceRoot "Cargo.toml")){return "rust"}
-  if(Test-Path (Join-Path $SourceRoot "go.mod")){return "go"}
-  if(Get-ChildItem -LiteralPath $SourceRoot -Filter "*.ps1" -File|Select-Object -First 1){return "powershell"}
-  throw "Cannot detect build_type for '$($Plan.name)'."
-}
-
-function Prepare-HybridPackage {
-  param([object]$Plan,[string]$SourceRoot,[string]$PackageDir,[string]$BuildType)
-  Copy-Item -LiteralPath (Join-Path $SourceRoot "*") -Destination $PackageDir -Recurse -Force
-  Push-Location $PackageDir
-  try{
-    switch($BuildType){
-      "python"{
-        $wheelhouse=Join-Path $PackageDir ".meta\wheelhouse";$null=New-Item -ItemType Directory -Force -Path $wheelhouse
-        if(Test-Path "requirements.txt"){Invoke-Checked "python" @("-m","pip","download","--disable-pip-version-check","--dest",$wheelhouse,"-r","requirements.txt")}
-        Invoke-Checked "python" @("-m","pip","download","--disable-pip-version-check","--dest",$wheelhouse,"pyinstaller")
-      }
-      "node"{Invoke-Checked "corepack" @("enable");Invoke-Checked "pnpm" @("fetch","--prod","--frozen-lockfile")}
-      "bun"{Invoke-Checked "bun" @("install","--frozen-lockfile","--ignore-scripts")}
-      "go"{Invoke-Checked "go" @("mod","vendor")}
-      "rust"{
-        $vendor=Join-Path $PackageDir "vendor";Invoke-Checked "cargo" @("vendor",$vendor)
-        $cargoDir=Join-Path $PackageDir ".cargo";$null=New-Item -ItemType Directory -Force -Path $cargoDir
-        '[source.crates-io]'+'\nreplace-with = "vendored-sources"\n\n[source.vendored-sources]\ndirectory = "vendor"'|Set-Content -LiteralPath (Join-Path $cargoDir "config.toml") -Encoding utf8
-      }
-      default{}
-    }
-  }finally{Pop-Location}
-}
-
-function Build-CloudPackage {
-  param([object]$Plan,[string]$PackageDir,[string]$SourceRoot,[string]$BuildType)
-  Push-Location $SourceRoot
-  try{
-    switch($BuildType){
-      "python"{
-        $entry=[string](Get-Prop $Plan.recipe "entrypoint" "")
-        if(-not$entry){$entry=(Get-ChildItem -LiteralPath $SourceRoot -Filter "*.py" -File|Select-Object -First 1).Name}
-        if(-not$entry){throw "Python entrypoint not found."}
-        if(Test-Path "requirements.txt"){Invoke-Checked "python" @("-m","pip","install","--disable-pip-version-check","-r","requirements.txt")}
-        Invoke-Checked "python" @("-m","PyInstaller","--noconfirm","--clean","--onefile","--name",$Plan.name,"--distpath",$PackageDir,$entry)
-      }
-      "go"{$entry=[string](Get-Prop $Plan.recipe "entrypoint" ".");Invoke-Checked "go" @("build","-trimpath","-ldflags=-s -w","-o",(Join-Path $PackageDir "$($Plan.name).exe"),$entry)}
-      "rust"{Invoke-Checked "cargo" @("build","--locked","--release");Get-ChildItem "target\release\*.exe" -File|Copy-Item -Destination $PackageDir}
-      "node"{
-        Invoke-Checked "corepack" @("enable");Invoke-Checked "pnpm" @("install","--frozen-lockfile");Invoke-Checked "pnpm" @("run","build")
-        foreach($path in @("build","dist","drizzle","package.json","pnpm-lock.yaml")){if(Test-Path $path){Copy-Item $path -Destination $PackageDir -Recurse -Force}}
-        Push-Location $PackageDir;try{if(Test-Path "pnpm-lock.yaml"){Invoke-Checked "pnpm" @("install","--prod","--frozen-lockfile")}}finally{Pop-Location}
-        @("@echo off",'node "%~dp0build\server\index.js" %*')|Set-Content -LiteralPath (Join-Path $PackageDir "$($Plan.name).cmd") -Encoding ascii
-      }
-      "bun"{
-        Invoke-Checked "bun" @("install","--frozen-lockfile");Invoke-Checked "bun" @("run","build")
-        $out=[string](Get-Prop $Plan.recipe "output_path" "dist");if(-not(Test-Path $out)){throw "Missing Bun output '$out'."};Copy-Item $out -Destination $PackageDir -Recurse -Force
-      }
-      "powershell"{
-        $entry=[string](Get-Prop $Plan.recipe "entrypoint" (Get-Prop $Plan.recipe "bin"));if(-not(Test-Path $entry)){throw "Missing PowerShell entrypoint '$entry'."};Copy-Item $entry -Destination $PackageDir
-      }
-      default{throw "Unsupported build_type '$BuildType'."}
-    }
-  }finally{Pop-Location}
-}
-
 function Invoke-BuildPhase {
   param([object[]]$Plans)
   if($PackageName){
@@ -498,13 +416,12 @@ function Get-LocalCommands {
   $commands.Add('$jobs = [Math]::Max(1, [Environment]::ProcessorCount)')
   switch($type){
     "python"{
-      $entry=[string](Get-Prop $Plan.recipe "entrypoint" "$name.py")
-      $commands.Add('python -m venv "$dir\.meta\venv"')
-      $pip='& "$dir\.meta\venv\Scripts\python.exe" -m pip install --disable-pip-version-check'
-      if($offline){$pip+=' --no-index --find-links "$dir\.meta\wheelhouse"'}
-      $commands.Add($pip+' pyinstaller')
-      $commands.Add(('if (Test-Path -LiteralPath "$dir\requirements.txt") {{ {0} -r "$dir\requirements.txt" }}' -f $pip))
-      $commands.Add(('& "$dir\.meta\venv\Scripts\python.exe" -m PyInstaller --noconfirm --clean --onefile --name "{0}" --distpath "$dir" "{1}"' -f $name,$entry))
+			$entry=[string](Get-Prop $Plan.recipe "entrypoint" "$name.py")
+			$commands.Add('python -m venv "$dir\.meta\venv"')
+			$pip='& "$dir\.meta\venv\Scripts\python.exe" -m pip install --disable-pip-version-check'
+			if($offline){$pip+=' --no-index --find-links "$dir\.meta\wheelhouse"'}
+			$commands.Add(('if (Test-Path -LiteralPath "$dir\requirements.txt") {{ {0} -r "$dir\requirements.txt" }}' -f $pip))
+			$commands.Add(('@("@echo off", ''& "%~dp0.meta\venv\Scripts\python.exe" "%~dp0{0}" %*'') | Set-Content -LiteralPath "$dir\{1}.cmd" -Encoding ascii' -f ($entry -replace '/','\'), $name))
     }
     "go"{$entry=[string](Get-Prop $Plan.recipe "entrypoint" ".");$vendor=if($offline){"-mod=vendor "}else{""};$commands.Add(('go build {0}-trimpath -ldflags="-s -w" -o "$dir\{1}.exe" {2}' -f $vendor,$name,$entry))}
     "rust"{

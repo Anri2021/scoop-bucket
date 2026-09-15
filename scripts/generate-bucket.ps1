@@ -495,9 +495,12 @@ function Get-ToolDepends {
   $set=[Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
   foreach($d in @(Get-Prop $Plan.recipe "depends" @())){$null=$set.Add([string]$d)}
   foreach($d in @(Get-Prop $Plan.recipe "tool_dependencies" @())){$null=$set.Add([string]$d)}
-  if($Plan.mode-in@("local","hybrid")){
-    $tool=switch(([string](Get-Prop $Plan.recipe "build_type" "")).ToLowerInvariant()){"python"{"python"};"go"{"go"};"rust"{"rust"};"node"{"nodejs"};"bun"{"bun"};default{$null}}
-    if($tool){$null=$set.Add($tool)}
+  $type = ([string](Get-Prop $Plan.recipe "build_type" "")).ToLowerInvariant()
+  if ($type -eq "node" -or $type -eq "bun") { $null = $set.Add("nodejs") }
+  if ($type -eq "python") { $null = $set.Add("python") }
+  if ($Plan.mode -in @("local","hybrid")) {
+    $tool = switch ($type) { "go" { "go" }; "rust" { "rust" }; default { $null } }
+    if ($tool) { $null = $set.Add($tool) }
   }
   return @($set|Sort-Object)
 }

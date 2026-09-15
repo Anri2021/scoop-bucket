@@ -1,14 +1,14 @@
 {
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Dynu DDNS IP update utility",
   "homepage": "https://github.com/Anri2021/ddns-dynu",
   "license": "MIT",
   "url": [
-    "https://github.com/Anri2021/ddns-dynu/releases/download/v1.0.6/ddns-dynu.ps1",
-    "https://github.com/Anri2021/ddns-dynu/releases/download/v1.0.6/ddns-dynu.example.conf"
+    "https://github.com/Anri2021/ddns-dynu/releases/download/v1.0.7/ddns-dynu.ps1",
+    "https://github.com/Anri2021/ddns-dynu/releases/download/v1.0.7/ddns-dynu.example.conf"
   ],
   "hash": [
-    "25f5de9e087b6a5d491e58bdabcafb080c02c4399f8861b314189d26d4501cf5",
+    "5845bf332c5f80c3bef37b36acf372ca3e09768356453cc669e6ccdecb540465",
     "2893b49fdb764702eeb2de9a149a4557ad8453f1be722a790aadbb48983f3f14"
   ],
   "bin": "ddns-dynu.ps1",

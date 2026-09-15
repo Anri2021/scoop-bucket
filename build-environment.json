@@ -1,0 +1,8 @@
+{
+  "runner": "windows-latest",
+  "python": "3.13",
+  "node": "24",
+  "go": "stable",
+  "archive": "zip-deflate",
+  "archive_level": 5
+}

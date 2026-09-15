@@ -10,6 +10,7 @@ param(
   [string]$StageDir = "$PSScriptRoot/../dist/stage",
   [string]$BucketDir = "$PSScriptRoot/../bucket",
   [string]$CacheDir = "$PSScriptRoot/../dist/cache",
+  [string]$BuildEnvironmentPath = "$PSScriptRoot/../build-environment.json",
   [string]$PackageName = "",
   [ValidateRange(1,32)][int]$ThrottleLimit = [Math]::Min([Environment]::ProcessorCount, 8),
   [switch]$ForceRebuild,
@@ -24,9 +25,11 @@ $PSNativeCommandUseErrorActionPreference = $false
 $EngineVersion = "4.0"
 $EngineSha256 = Get-FileHash -LiteralPath $PSCommandPath -Algorithm SHA256 | Select-Object -ExpandProperty Hash
 $EngineSha256 = $EngineSha256.ToLowerInvariant()
-$WorkflowPath = Join-Path (Split-Path $PSScriptRoot -Parent) ".github/workflows/autoupdate.yml"
-$WorkflowSha256 = if(Test-Path -LiteralPath $WorkflowPath){(Get-FileHash -LiteralPath $WorkflowPath -Algorithm SHA256).Hash.ToLowerInvariant()}else{"none"}
-$PipelineBytes = [Text.Encoding]::UTF8.GetBytes("$EngineSha256`n$WorkflowSha256")
+$BuildEnvironmentPath = [IO.Path]::GetFullPath($BuildEnvironmentPath)
+if(-not(Test-Path -LiteralPath $BuildEnvironmentPath)){throw "Build environment file not found: $BuildEnvironmentPath"}
+$BuildEnvironment = Get-Content -LiteralPath $BuildEnvironmentPath -Raw -Encoding utf8|ConvertFrom-Json
+$BuildEnvironmentSha256 = (Get-FileHash -LiteralPath $BuildEnvironmentPath -Algorithm SHA256).Hash.ToLowerInvariant()
+$PipelineBytes = [Text.Encoding]::UTF8.GetBytes("$EngineSha256`n$BuildEnvironmentSha256")
 $PipelineSha256 = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($PipelineBytes)).ToLowerInvariant()
 
 function Get-Prop {
@@ -563,7 +566,7 @@ $targetRepository=if($env:GITHUB_REPOSITORY){$env:GITHUB_REPOSITORY}else{"Anri20
 
 if($Phase-in@("Plan","All")){
   $plans=Resolve-Plans $recipes $targetRepository $EngineVersion $PipelineSha256 -Force:$ForceRebuild
-  $planDocument=[ordered]@{engine_version=$EngineVersion;engine_sha256=$EngineSha256;pipeline_sha256=$PipelineSha256;recipes_sha256=(Get-FileSha256 $RecipesPath);packages=$plans}
+  $planDocument=[ordered]@{engine_version=$EngineVersion;engine_sha256=$EngineSha256;build_environment_sha256=$BuildEnvironmentSha256;pipeline_sha256=$PipelineSha256;build_environment=$BuildEnvironment;recipes_sha256=(Get-FileSha256 $RecipesPath);packages=$plans}
   Write-Utf8Json $PlanPath $planDocument 30
   $plans|Format-Table name,version,mode,reason,needs_build -AutoSize
   if($ValidateOnly){exit 0}

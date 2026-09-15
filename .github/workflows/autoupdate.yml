@@ -6,6 +6,7 @@ on:
     branches: [ main ]
     paths:
       - "recipes.json"
+      - "build-environment.json"
       - "scripts/**"
       - "schemas/**"
       - ".github/workflows/autoupdate.yml"
@@ -14,6 +15,7 @@ on:
   pull_request:
     paths:
       - "recipes.json"
+      - "build-environment.json"
       - "scripts/**"
       - "schemas/**"
       - "tests/**"
@@ -67,7 +69,11 @@ jobs:
           "needs_node=$($types -contains 'node' -or $types -contains 'auto')".ToLowerInvariant() >> $env:GITHUB_OUTPUT
           "needs_go=$($types -contains 'go' -or $types -contains 'auto')".ToLowerInvariant() >> $env:GITHUB_OUTPUT
           $include = @($builds | ForEach-Object {
-            [ordered]@{ package = $_.name; build_type = $_.recipe.build_type; fingerprint = $_.fingerprint.Substring(0, 16) }
+            [ordered]@{
+              package = $_.name; build_type = $_.recipe.build_type; fingerprint = $_.fingerprint.Substring(0, 16)
+              runner = $plan.build_environment.runner; python = $plan.build_environment.python
+              node = $plan.build_environment.node; go = $plan.build_environment.go
+            }
           })
           "build_matrix=$(@{ include = $include } | ConvertTo-Json -Depth 5 -Compress)" >> $env:GITHUB_OUTPUT
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -80,7 +86,7 @@ jobs:
   build:
     if: needs.plan.outputs.has_build == 'true'
     needs: plan
-    runs-on: windows-latest
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 45
     permissions:
       contents: read
@@ -111,15 +117,15 @@ jobs:
       - if: matrix.build_type == 'python' || matrix.build_type == 'auto'
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
-          python-version: "3.13"
+          python-version: ${{ matrix.python }}
       - if: matrix.build_type == 'node' || matrix.build_type == 'bun' || matrix.build_type == 'auto'
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
-          node-version: "24"
+          node-version: ${{ matrix.node }}
       - if: matrix.build_type == 'go' || matrix.build_type == 'auto'
         uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
         with:
-          go-version: stable
+          go-version: ${{ matrix.go }}
           cache: false
       - if: matrix.build_type == 'python' || matrix.build_type == 'auto'
         name: Install Python cloud builder
@@ -219,8 +225,8 @@ jobs:
           git push origin HEAD:main
 
   install-smoke:
-    if: always() && github.event_name != 'pull_request' && needs.publish.result == 'success'
-    needs: publish
+    if: always() && github.event_name != 'pull_request' && needs.publish.result == 'success' && needs.plan.outputs.has_build == 'true'
+    needs: [plan, publish]
     runs-on: windows-latest
     timeout-minutes: 10
     permissions:

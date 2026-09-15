@@ -1,0 +1,11 @@
+{
+  "version": "1.0.2",
+  "description": "IPv6 Router Advertisement Daemon",
+  "homepage": "https://github.com/Anri2021/ipv6-advertiser",
+  "license": "MIT",
+  "url": "https://github.com/Anri2021/scoop-bucket/releases/download/ipv6-advertiser-v1.0.2/ipv6-advertiser-1.0.2-0a6b44d9ebb3-windows-x64.zip",
+  "hash": "7444df147eac67c5a8c86870fa1f6c879ef37cdd3e9c1702e88239c299f9a684",
+  "bin": "ipv6-advertiser.cmd",
+  "depends": "python",
+  "persist": "ipv6-advertiser.example.conf"
+}

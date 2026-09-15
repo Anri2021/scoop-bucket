@@ -1,54 +1,70 @@
 {
   "engine_version": "4.0",
-  "recipes_sha256": "641ffb20a8973e958c4acc69f0c85bab43711e3d02439974592cf81b7e1a2119",
+  "recipes_sha256": "067fbb608ce0f191dd8c0e8da56bdb9a87415d6de993a65c6f50e9fe2d145af0",
   "packages": {
     "bun": {
       "version": "1.4.2",
       "tag": "bun-v1.4.2",
       "mode": "upstream",
       "reason": "explicit:upstream",
-      "fingerprint": "3a57c1a5752feb091e7571e197311de2ee17d475202db450a09e45d0d2580dc4",
-      "artifact": "bun-1.4.2-3a57c1a5752f-windows-x64.zip"
+      "fingerprint": "d1f2086132e7337434946cbf60b24b67a1a807e38aff98ca690ee19d2f40c01e",
+      "artifact": "bun-1.4.2-d1f2086132e7-windows-x64.zip"
     },
     "ddns-dynu": {
       "version": "1.0.2",
       "tag": "v1.0.2",
       "mode": "upstream",
       "reason": "explicit:upstream",
-      "fingerprint": "d536cba5407176a66ec1d77fa350594e9edc8fcdd194d3e21e14429ad6c8ba5c",
-      "artifact": "ddns-dynu-1.0.2-d536cba54071-windows-x64.zip"
+      "fingerprint": "2342ae21f296149fd1e8a5c94c268d70a5818ebe26669c94d6898e040d88371e",
+      "artifact": "ddns-dynu-1.0.2-2342ae21f296-windows-x64.zip"
     },
     "dex": {
       "version": "2.45.1",
       "tag": "v2.45.1",
       "mode": "cloud",
       "reason": "explicit:cloud",
-      "fingerprint": "1592db80c2f0a049f1e5dfe9d50fa96954a8bfc0ed5d4b443384d52cf23757a9",
-      "artifact": "dex-2.45.1-1592db80c2f0-windows-x64.zip"
+      "fingerprint": "bead7b5e762c8d9526cdca9b84549eea15b980d7498a684f4bb7cec2c6b8243e",
+      "artifact": "dex-2.45.1-bead7b5e762c-windows-x64.zip"
     },
     "headplane": {
       "version": "0.7.1",
       "tag": "v0.7.1",
       "mode": "cloud",
       "reason": "explicit:cloud",
-      "fingerprint": "da89dfd20e3f3ccf3e7dfb7082c4ad3b1ba1310f25b7c62746394a5c554d4d3b",
-      "artifact": "headplane-0.7.1-da89dfd20e3f-windows-x64.zip"
+      "fingerprint": "e4c280db4d5889162e17a236a527a03b8522e34cab044bfd91e0bd811e2409e7",
+      "artifact": "headplane-0.7.1-e4c280db4d58-windows-x64.zip"
     },
     "headscale": {
       "version": "0.29.3",
       "tag": "v0.29.3",
       "mode": "cloud",
       "reason": "explicit:cloud",
-      "fingerprint": "64ca591b244d98a4b3cdc152bc0a70d61d1d77d2591ccb5eeb8887719d4b9ad5",
-      "artifact": "headscale-0.29.3-64ca591b244d-windows-x64.zip"
+      "fingerprint": "05a6132c4e15e3f7c5a3542bfec5e11ff53b27966dc4a42ed508843235826ca0",
+      "artifact": "headscale-0.29.3-05a6132c4e15-windows-x64.zip"
     },
     "ipv6-advertiser": {
       "version": "1.0.2",
       "tag": "v1.0.2",
       "mode": "cloud",
       "reason": "explicit:cloud",
-      "fingerprint": "dee05dfceb2233675cf5efd7354bb51d3c5e2cd2454e0294f7ee7da66fc318b9",
-      "artifact": "ipv6-advertiser-1.0.2-dee05dfceb22-windows-x64.zip"
+      "fingerprint": "d278f61239deb15e2d79df65fb6e1c1dd3996abbc446a8686ac816baacb0e153",
+      "artifact": "ipv6-advertiser-1.0.2-d278f61239de-windows-x64.zip"
+    },
+    "repomix": {
+      "version": "1.18.0",
+      "tag": "v1.18.0",
+      "mode": "cloud",
+      "reason": "explicit:cloud",
+      "fingerprint": "3d2529803cd61ccef806ae6fb87ed44b3dd25f21e87a9995679ee7416d39cefb",
+      "artifact": "repomix-1.18.0-3d2529803cd6-windows-x64.zip"
+    },
+    "scapy": {
+      "version": "2.7.0",
+      "tag": "v2.7.0",
+      "mode": "cloud",
+      "reason": "explicit:cloud",
+      "fingerprint": "31f9f45184ef55ef6ea7b294c235c7fc2c0e0d97bfcf08aac955ce8c240fd9be",
+      "artifact": "scapy-2.7.0-31f9f45184ef-windows-x64.zip"
     }
   }
 }

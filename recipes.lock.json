@@ -1,6 +1,6 @@
 {
   "engine_version": "4.0",
-  "recipes_sha256": "8eb31f6ee8c05a4ef6aef62fef7d8108edd59176b4b11097e899731b2c2145eb",
+  "recipes_sha256": "07c68c8c3f9c633239c562a3001d69cd4ed4d29320219962fbe08325fb84a275",
   "packages": {
     "bun": {
       "version": "1.4.2",
@@ -39,8 +39,8 @@
       "tag": "v0.29.3",
       "mode": "cloud",
       "reason": "explicit:cloud",
-      "fingerprint": "eb1a52e5506fbaec25f6bc5f0354983a9a9418f2f224d638f34306b4f96362ac",
-      "artifact": "headscale-0.29.3-eb1a52e5506f-windows-x64.zip"
+      "fingerprint": "5de653260dd6f8df3ada71473e407e056c48a27bf49729fb67123fb14bfdb0d0",
+      "artifact": "headscale-0.29.3-5de653260dd6-windows-x64.zip"
     },
     "ipv6-advertiser": {
       "version": "1.0.2",

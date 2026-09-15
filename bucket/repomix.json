@@ -4,7 +4,7 @@
   "homepage": "https://repomix.com",
   "license": "MIT",
   "url": "https://github.com/Anri2021/scoop-bucket/releases/download/repomix-v1.18.0/repomix-1.18.0-49ec50eb2f4a-windows-x64.zip",
-  "hash": "b664ad0f0a5314cb38a25bb410a681624a3221b62da1d7d5038d977a1a0586ee",
+  "hash": "5c4ebdf8d11059bcb1e18e1f76115096a7949cf9f99afc99e178aae009b5f85e",
   "bin": "repomix.cmd",
   "depends": "nodejs"
 }

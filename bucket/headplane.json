@@ -4,7 +4,7 @@
   "homepage": "https://github.com/tale/headplane",
   "license": "AGPL-3.0-only",
   "url": "https://github.com/Anri2021/scoop-bucket/releases/download/headplane-v0.7.1/headplane-0.7.1-d0c4de5ff990-windows-x64.zip",
-  "hash": "7d388fec7d46ecf1b979dfa8b2c2b696a82651fdf5f6437310079fd76b6239d2",
+  "hash": "515bb44b5a45d371a39877ab3111f144e6f07003a956b62a57dde89aa607a472",
   "bin": "headplane.cmd",
   "depends": "nodejs",
   "persist": [

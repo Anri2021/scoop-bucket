@@ -4,7 +4,7 @@
   "homepage": "https://dexidp.com/",
   "license": "Apache-2.0",
   "url": "https://github.com/Anri2021/scoop-bucket/releases/download/dex-v2.45.1/dex-2.45.1-47f8f3b99e4c-windows-x64.zip",
-  "hash": "b32bf23971a75c42efab2897a203754d8426d909c1b207aa9809b16890598270",
+  "hash": "a47beef619c583dc70a13b99bc3174be9ca765550682ba6a09e83c1ff7343e98",
   "bin": "dex.exe",
   "persist": "config.yaml"
 }

@@ -4,7 +4,7 @@
   "homepage": "https://github.com/juanfont/headscale",
   "license": "BSD-3-Clause",
   "url": "https://github.com/Anri2021/scoop-bucket/releases/download/headscale-v0.29.3/headscale-0.29.3-38f46e72e434-windows-x64.zip",
-  "hash": "df46bffe00b4c1bd23e4b486cf85f83a8f51c451d0fe8bde3a84a4acc5147735",
+  "hash": "3b8f292fa99cf019953c0ef2e23f21ee4f901dc2e9b406b82dfc4ed92c731389",
   "bin": "headscale.exe",
   "persist": "config.yaml"
 }

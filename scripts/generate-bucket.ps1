@@ -399,10 +399,17 @@ function Invoke-BuildPhase {
           Push-Location $sourceRoot
           try{
             switch($type){
-              "python"{$entry=[string](Prop $plan.recipe "entrypoint" "");if(-not$entry){$entry=(Get-ChildItem *.py -File|Select-Object -First 1).Name};if(Test-Path "requirements.txt"){Cmd "python" @("-m","pip","install","-r","requirements.txt")};Cmd "python" @("-m","PyInstaller","--noconfirm","--clean","--onefile","--name",$plan.name,"--distpath",$packageDir,$entry)}
+              "python"{$entry=[string](Prop $plan.recipe "entrypoint" "");if(-not$entry){$entry=(Get-ChildItem *.py -File|Select-Object -First 1).Name};if(Test-Path "requirements.txt"){Cmd "python" @("-m","pip","install","--disable-pip-version-check","-r","requirements.txt")};if((Test-Path "setup.py") -or (Test-Path "pyproject.toml")){Cmd "python" @("-m","pip","install","--disable-pip-version-check",".")};Cmd "python" @("-m","PyInstaller","--noconfirm","--clean","--onefile","--name",$plan.name,"--distpath",$packageDir,$entry)}
               "go"{$entry=[string](Prop $plan.recipe "entrypoint" ".");if($entry -and -not ($entry.StartsWith(".") -or $entry.StartsWith("/"))) { $entry = "./$entry" }; $oldCgo = $env:CGO_ENABLED; $env:CGO_ENABLED = "0"; try { Cmd "go" @("build","-trimpath","-ldflags=-s -w","-o",(Join-Path $packageDir "$($plan.name).exe"),$entry) } finally { $env:CGO_ENABLED = $oldCgo }}
               "rust"{Cmd "cargo" @("build","--locked","--release");Get-ChildItem "target\release\*.exe" -File|Copy-Item -Destination $packageDir}
-              "node"{Cmd "corepack" @("enable");Cmd "pnpm" @("install","--frozen-lockfile");Cmd "pnpm" @("run","build");foreach($p in @("build","dist","drizzle","package.json","pnpm-lock.yaml")){if(Test-Path $p){Copy-Item $p $packageDir -Recurse -Force}};Push-Location $packageDir;try{if(Test-Path "pnpm-lock.yaml"){Cmd "pnpm" @("install","--prod","--frozen-lockfile")}}finally{Pop-Location};@("@echo off",'node "%~dp0build\server\index.js" %*')|Set-Content (Join-Path $packageDir "$($plan.name).cmd") -Encoding ascii}
+              "node"{
+                Cmd "corepack" @("enable")
+                if(Test-Path "pnpm-lock.yaml"){Cmd "pnpm" @("install","--frozen-lockfile");Cmd "pnpm" @("run","build")}else{Cmd "npm" @("install");Cmd "npm" @("run","build")}
+                foreach($p in @("bin","build","dist","drizzle","package.json","package-lock.json","pnpm-lock.yaml")){if(Test-Path $p){Copy-Item $p $packageDir -Recurse -Force}}
+                Push-Location $packageDir;try{if(Test-Path "pnpm-lock.yaml"){Cmd "pnpm" @("install","--prod","--frozen-lockfile")}else{Cmd "npm" @("install","--omit=dev")}}finally{Pop-Location}
+                $entry=[string](Prop $plan.recipe "entrypoint" "build/server/index.js");$cmdTarget=($entry -replace '/','\')
+                @("@echo off",('node "%~dp0{0}" %*' -f $cmdTarget))|Set-Content (Join-Path $packageDir "$($plan.name).cmd") -Encoding ascii
+              }
               "bun"{Cmd "bun" @("install","--frozen-lockfile");Cmd "bun" @("run","build");$out=[string](Prop $plan.recipe "output_path" "dist");Copy-Item $out $packageDir -Recurse -Force}
               "powershell"{$entry=[string](Prop $plan.recipe "entrypoint" (Prop $plan.recipe "bin"));Copy-Item $entry $packageDir}
               default{throw "Unsupported build_type '$type'"}

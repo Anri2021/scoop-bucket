@@ -219,8 +219,8 @@ jobs:
           git push origin HEAD:main
 
   install-smoke:
-    if: always() && github.event_name != 'pull_request' && needs.publish.result == 'success'
-    needs: publish
+    if: always() && github.event_name != 'pull_request' && needs.publish.result == 'success' && needs.plan.outputs.has_build == 'true'
+    needs: [plan, publish]
     runs-on: windows-latest
     timeout-minutes: 10
     permissions:

@@ -11,12 +11,12 @@
       "artifact": "bun-1.4.2-5a7949219f81-windows-x64.zip"
     },
     "ddns-dynu": {
-      "version": "1.0.4",
-      "tag": "v1.0.4",
+      "version": "1.0.6",
+      "tag": "v1.0.6",
       "mode": "upstream",
       "reason": "explicit:upstream",
-      "fingerprint": "5099e9d8df16e4bdf6b4b3cbe4ebbe8b07775983a05696a9c9a951adf941ee88",
-      "artifact": "ddns-dynu-1.0.4-5099e9d8df16-windows-x64.zip"
+      "fingerprint": "7d51b3c35cf8302658e082634e3a661ac6076f98001093c63a405df62a46d84b",
+      "artifact": "ddns-dynu-1.0.6-7d51b3c35cf8-windows-x64.zip"
     },
     "dex": {
       "version": "2.45.1",

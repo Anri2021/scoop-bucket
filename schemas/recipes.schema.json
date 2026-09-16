@@ -48,7 +48,7 @@
         "cgo": { "type": "boolean", "default": false },
         "build_args": { "type": "array", "items": { "type": "string" } },
         "output_dirs": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
-        "build_type": { "enum": [ "auto", "python", "go", "rust", "node", "bun", "powershell", "caddy" ] },
+        "build_type": { "enum": [ "auto", "python", "go", "rust", "node", "bun", "powershell", "caddy" , "dotnet" ] },
         "asset_pattern": { "type": "string" },
         "extra_assets": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
         "version_regex": { "type": "string" },

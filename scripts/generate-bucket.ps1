@@ -334,7 +334,7 @@ function Invoke-BuildPhase {
 		      $depSlnOrProj = Get-ChildItem -Path $depTarget -Filter "*.*proj" -Recurse -File | Select-Object -First 1
 		    }
 		    if ($depSlnOrProj) {
-		      Cmd "dotnet" @("build", $depSlnOrProj.FullName, "-c", "Release")
+		      Cmd "dotnet" @("build", $depSlnOrProj.FullName, "-c", "Release", "-p:TreatWarningsAsErrors=false", "-warnaserror:false")
 		    }
 		  }
 		}
@@ -594,8 +594,10 @@ function Invoke-FinalizePhase {
     Write-Utf8Json (Join-Path $BucketDir "$($plan.name).json") $manifest 20
     $lockPackages[$plan.name]=[ordered]@{version=$plan.version;tag=$plan.tag;mode=$plan.mode;reason=$plan.reason;fingerprint=$plan.fingerprint;artifact=$plan.artifact_name}
   }
-  $active=[Collections.Generic.HashSet[string]]::new([string[]]@($Plans.name),[StringComparer]::OrdinalIgnoreCase)
-  Get-ChildItem $BucketDir -Filter "*.json" -File|Where-Object{-not$active.Contains($_.BaseName)}|Remove-Item -Force
+  if (-not $PackageName) {
+    $active = [Collections.Generic.HashSet[string]]::new([string[]]@($Plans.name), [StringComparer]::OrdinalIgnoreCase)
+    Get-ChildItem $BucketDir -Filter "*.json" -File | Where-Object { -not $active.Contains($_.BaseName) } | Remove-Item -Force
+  }
   $recipesHash=Get-FileSha256 $RecipesPath
   Write-Utf8Json (Join-Path ([IO.Path]::GetDirectoryName([IO.Path]::GetFullPath($RecipesPath))) "recipes.lock.json") ([ordered]@{engine_version=$EngineVersion;recipes_sha256=$recipesHash;packages=$lockPackages}) 20
 }
@@ -611,6 +613,20 @@ $recipes=@($config.recipes);Assert-Recipes $recipes
 $targetRepository=if($env:GITHUB_REPOSITORY){$env:GITHUB_REPOSITORY}else{"Anri2021/scoop-bucket"}
 
 if($Phase-in@("Plan","All")){
+  if ($PackageName) {
+    $byName = @{}; foreach ($r in $recipes) { $byName[$r.name] = $r }
+    if (-not $byName.ContainsKey($PackageName)) { throw "Recipe '$PackageName' not found." }
+    $selected = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    $null = $selected.Add($PackageName)
+    $queue = [Collections.Generic.Queue[string]]::new(); $queue.Enqueue($PackageName)
+    while ($queue.Count) {
+      $curr = $queue.Dequeue()
+      foreach ($dep in @(Get-Prop $byName[$curr] "tool_dependencies" @())) {
+        if ($selected.Add([string]$dep)) { $queue.Enqueue([string]$dep) }
+      }
+    }
+    $recipes = @($recipes | Where-Object { $selected.Contains($_.name) })
+  }
   $plans=Resolve-Plans $recipes $targetRepository $EngineVersion $PipelineSha256 -Force:$ForceRebuild
   $planDocument=[ordered]@{engine_version=$EngineVersion;engine_sha256=$EngineSha256;build_environment_sha256=$BuildEnvironmentSha256;pipeline_sha256=$PipelineSha256;build_environment=$BuildEnvironment;recipes_sha256=(Get-FileSha256 $RecipesPath);packages=$plans}
   Write-Utf8Json $PlanPath $planDocument 30

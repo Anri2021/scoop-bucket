@@ -135,6 +135,15 @@ jobs:
         with:
           go-version: ${{ matrix.go }}
           cache: true
+      - if: matrix.build_type == 'dotnet' || matrix.build_type == 'auto'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            6.0.x
+            8.0.x
+            9.0.x
+            10.0.x
+            11.0.x
       - name: Build untrusted sources without a write token
         shell: pwsh
         run: ./scripts/generate-bucket.ps1 -Phase Build -PackageName '${{ matrix.package }}' -RecipesPath ./recipes.json -PlanPath ./dist/plan.json -StageDir ./dist/stage -CacheDir ./dist/cache

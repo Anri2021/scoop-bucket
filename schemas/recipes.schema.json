@@ -58,6 +58,7 @@
         "bin": {},
         "depends": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
         "tool_dependencies": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+        "git_dependencies": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
         "toolchain": { "type": "boolean", "default": false },
         "bootstrap_exe": { "type": "string" },
         "local_commands": { "type": "array", "items": { "type": "string" } },

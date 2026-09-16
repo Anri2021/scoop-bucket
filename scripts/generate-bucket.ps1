@@ -335,20 +335,18 @@ function Invoke-BuildPhase {
                 @("@echo off", 'set "PYTHONPATH=%~dp0lib;%PYTHONPATH%"', ('python "%~dp0{0}" %*' -f $cmdTarget)) | Set-Content (Join-Path $packageDir "$($plan.name).cmd") -Encoding ascii
               }
               "dotnet"{
-  				$entry = [string](Prop $plan.recipe "entrypoint" "")
-  				if (-not $entry) {
-  				  $entry = (Get-ChildItem -Filter "*App.csproj" -Recurse -File | Select-Object -First 1).FullName
-  				}
-  				# שכפול ספריית התלויות של Technitium לתיקייה מקבילה אם נדרש
-  				if ($plan.name -match "technitium") {
-  				  $parentDir = Split-Path $sourceRoot -Parent
-  				  $libDir = Join-Path $parentDir "TechnitiumLibrary"
-  				  if (-not (Test-Path $libDir)) {
-  				    Cmd "git" @("clone", "--depth", "1", "https://github.com/TechnitiumSoftware/TechnitiumLibrary.git", $libDir)
-   				  }
-  				}
-  				Cmd "dotnet" @("publish", $entry, "-c", "Release", "-o", $packageDir)
-			  }
+                $entry = [string](Prop $plan.recipe "entrypoint" "")
+                $proj = if ($entry -and (Test-Path (Join-Path $sourceRoot $entry))) {
+                  Join-Path $sourceRoot $entry
+                } elseif ($entry -and (Test-Path $entry)) {
+                  $entry
+                } else {
+                  (Get-ChildItem -Path $sourceRoot -Filter "*.*proj" -Recurse -File | Select-Object -First 1).FullName
+                }
+                if (-not $proj) { throw "No .NET project file found in '$sourceRoot'." }
+                $customArgs = @(Prop $plan.recipe "build_args" @())
+                Cmd "dotnet" (@("publish", $proj, "-c", "Release", "-o", $packageDir) + $customArgs)
+              }
 			  "go"{
   							$entry = [string](Prop $plan.recipe "entrypoint" "."); if($entry -and -not ($entry.StartsWith(".") -or $entry.StartsWith("/"))) { $entry = "./$entry" }
   							$useCgo = [bool](Prop $plan.recipe "cgo" $false)

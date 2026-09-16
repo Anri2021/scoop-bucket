@@ -269,7 +269,15 @@ function Invoke-BuildPhase {
       $plan=$_;$stageRoot=$using:stageRoot;$cacheRoot=[IO.Path]::GetFullPath($using:CacheDir);$activeBuildCount=$using:activeBuildCount;$requiredToolNames=$using:requiredToolNames
       function Prop{param([object]$o,[string]$n,$d=$null);$p=$o.PSObject.Properties[$n];if($null-eq$p-or$null-eq$p.Value){return $d};return $p.Value}
       function Hash{param([string]$p);$s=[IO.File]::OpenRead($p);try{return [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($s)).ToLowerInvariant()}finally{$s.Dispose()}}
-      function Cmd{ param([string]$f,[string[]]$a) $output = & $f @a 2>&1 $output | Out-Host if($LASTEXITCODE -ne 0){ $details = ($output | Select-Object -Last 10) -join "`n" throw "'$f' failed: $LASTEXITCODE`n$details" } }
+      function Cmd {
+        param([string]$f, [string[]]$a)
+        $output = & $f @a 2>&1
+        $output | Out-Host
+        if ($LASTEXITCODE -ne 0) {
+          $details = ($output | Select-Object -Last 10) -join "`n"
+          throw "'$f' failed: $LASTEXITCODE`n$details"
+        }
+      }
       function Cache{param([string]$u,[string]$p,[string]$h="");if(Test-Path $p){$a=Hash $p;if(-not$h-or$a-eq$h){return $p};Remove-Item $p -Force};$null=New-Item -ItemType Directory -Force -Path ([IO.Path]::GetDirectoryName($p));Invoke-WebRequest $u -OutFile $p -UseBasicParsing;if($h-and(Hash $p)-ne$h){throw "Hash mismatch"};return $p}
       $work=Join-Path $stageRoot ("work-"+$plan.name+"-"+$plan.fingerprint.Substring(0,8))
       try{

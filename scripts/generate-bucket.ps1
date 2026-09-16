@@ -334,7 +334,22 @@ function Invoke-BuildPhase {
                 $cmdTarget = ($entry -replace '/','\')
                 @("@echo off", 'set "PYTHONPATH=%~dp0lib;%PYTHONPATH%"', ('python "%~dp0{0}" %*' -f $cmdTarget)) | Set-Content (Join-Path $packageDir "$($plan.name).cmd") -Encoding ascii
               }
-              "go"{
+              "dotnet"{
+  				$entry = [string](Prop $plan.recipe "entrypoint" "")
+  				if (-not $entry) {
+  				  $entry = (Get-ChildItem -Filter "*App.csproj" -Recurse -File | Select-Object -First 1).FullName
+  				}
+  				# שכפול ספריית התלויות של Technitium לתיקייה מקבילה אם נדרש
+  				if ($plan.name -match "technitium") {
+  				  $parentDir = Split-Path $sourceRoot -Parent
+  				  $libDir = Join-Path $parentDir "TechnitiumLibrary"
+  				  if (-not (Test-Path $libDir)) {
+  				    Cmd "git" @("clone", "--depth", "1", "https://github.com/TechnitiumSoftware/TechnitiumLibrary.git", $libDir)
+   				  }
+  				}
+  				Cmd "dotnet" @("publish", $entry, "-c", "Release", "-o", $packageDir)
+			  }
+			  "go"{
   							$entry = [string](Prop $plan.recipe "entrypoint" "."); if($entry -and -not ($entry.StartsWith(".") -or $entry.StartsWith("/"))) { $entry = "./$entry" }
   							$useCgo = [bool](Prop $plan.recipe "cgo" $false)
   							$customArgs = @(Prop $plan.recipe "build_args" @())

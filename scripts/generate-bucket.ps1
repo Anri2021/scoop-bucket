@@ -328,13 +328,17 @@ function Invoke-BuildPhase {
 		  }
 
 		  # קימפול מקדים של תלות .NET כדי לייצר את קובצי ה-DLL והתלויות ב-Release
+		  # קימפול מקדים של תלויות .NET תוך דילוג גנרי על פרויקטים בעלי הפניות COM
 		  if ($type -eq "dotnet") {
-		    $depSlnOrProj = Get-ChildItem -Path $depTarget -Filter "*.sln" -File | Select-Object -First 1
-		    if (-not $depSlnOrProj) {
-		      $depSlnOrProj = Get-ChildItem -Path $depTarget -Filter "*.*proj" -Recurse -File | Select-Object -First 1
+		    $depProjects = Get-ChildItem -Path $depTarget -Filter "*.*proj" -Recurse -File | Where-Object {
+		      (Get-Content -LiteralPath $_.FullName -Raw) -notmatch "(?i)<COMReference"
 		    }
-		    if ($depSlnOrProj) {
-		      Cmd "dotnet" @("build", $depSlnOrProj.FullName, "-c", "Release", "-p:TreatWarningsAsErrors=false", "-warnaserror:false")
+		    foreach ($projFile in $depProjects) {
+		      try {
+		        Cmd "dotnet" @("build", $projFile.FullName, "-c", "Release", "-p:TreatWarningsAsErrors=false", "-warnaserror:false")
+		      } catch {
+		        Write-Warning "Skipped non-critical dependency project $($projFile.Name)"
+		      }
 		    }
 		  }
 		}

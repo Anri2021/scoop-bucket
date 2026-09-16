@@ -1,0 +1,14 @@
+{
+  "engine_version": "4.0",
+  "recipes_sha256": "e8cbb371b8d92de7e24fa757dadeaa18573c990bf953609abc8cab91d6da218f",
+  "packages": {
+    "technitium-dns": {
+      "version": "15.4.0",
+      "tag": "v15.4.0",
+      "mode": "cloud",
+      "reason": "explicit:cloud",
+      "fingerprint": "b08c41d30f90342bbd8f9f9333ab1af335b965cd99f81ca55783eac0e37c5171",
+      "artifact": "technitium-dns-15.4.0-b08c41d30f90-windows-x64.zip"
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "version": "15.4.0",
+  "description": "Authoritative and recursive DNS server for privacy and security",
+  "homepage": "https://technitium.com/dns/",
+  "license": "GPL-3.0-or-later",
+  "url": "https://github.com/Anri2021/scoop-bucket/releases/download/technitium-dns-v15.4.0/technitium-dns-15.4.0-b08c41d30f90-windows-x64.zip",
+  "hash": "54ae55e917c8d8769a637d986e49e0f352bc2e20889bf77bbbb40aec7e60203f",
+  "bin": "DnsServerApp.exe",
+  "persist": "config"
+}

@@ -310,10 +310,33 @@ function Invoke-BuildPhase {
         $type=([string](Prop $plan.recipe "build_type" "auto")).ToLowerInvariant()
 		foreach ($depUrl in @(Prop $plan.recipe "git_dependencies" @())) {
 		  $depName = ($depUrl -split '/')[-1] -replace '\.git$', ''
-		  $depTarget = Join-Path (Split-Path $sourceRoot -Parent) $depName
+		  $sourceParent = Split-Path $sourceRoot -Parent
+		  $depTarget = Join-Path $sourceParent $depName
   		  if (-not (Test-Path $depTarget)) {
 	    	Cmd "git" @("clone", "--depth", "1", [string]$depUrl, $depTarget)
   		  }
+
+		  # יצירת קישורים (Junctions) עבור כל עומק יחסי אפשרי (..\ או ..\..)
+		  $junctionLocations = @(
+		    (Join-Path $sourceRoot $depName),
+		    (Join-Path (Split-Path $sourceParent -Parent) $depName)
+		  )
+		  foreach ($loc in $junctionLocations) {
+		    if (-not (Test-Path $loc)) {
+		      New-Item -ItemType Junction -Path $loc -Target $depTarget -Force -ErrorAction SilentlyContinue | Out-Null
+		    }
+		  }
+
+		  # קימפול מקדים של תלות .NET כדי לייצר את קובצי ה-DLL והתלויות ב-Release
+		  if ($type -eq "dotnet") {
+		    $depSlnOrProj = Get-ChildItem -Path $depTarget -Filter "*.sln" -File | Select-Object -First 1
+		    if (-not $depSlnOrProj) {
+		      $depSlnOrProj = Get-ChildItem -Path $depTarget -Filter "*.*proj" -Recurse -File | Select-Object -First 1
+		    }
+		    if ($depSlnOrProj) {
+		      Cmd "dotnet" @("build", $depSlnOrProj.FullName, "-c", "Release")
+		    }
+		  }
 		}
         if($type-eq"auto"){$type=if(Test-Path (Join-Path $sourceRoot "package.json")){"node"}elseif(Test-Path (Join-Path $sourceRoot "Cargo.toml")){"rust"}elseif(Test-Path (Join-Path $sourceRoot "go.mod")){"go"}elseif((Test-Path (Join-Path $sourceRoot "pyproject.toml"))-or(Test-Path (Join-Path $sourceRoot "requirements.txt"))){"python"}else{"powershell"}}
         if($plan.mode-eq"hybrid"){

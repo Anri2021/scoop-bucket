@@ -2,6 +2,12 @@ name: Meta-Bucket v4
 
 on:
   workflow_dispatch:
+    inputs:
+      package:
+        description: "Package name to build (leave empty for all)"
+        required: false
+        type: string
+        default: ""
   push:
     branches: [ main ]
     paths:
@@ -59,7 +65,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-        run: ./scripts/generate-bucket.ps1 -Phase Plan -RecipesPath ./recipes.json -PlanPath ./dist/plan.json
+        run: ./scripts/generate-bucket.ps1 -Phase Plan -PackageName '${{ inputs.package }}' -RecipesPath ./recipes.json -PlanPath ./dist/plan.json
       - name: Export required builders
         id: matrix
         shell: pwsh
@@ -174,7 +180,7 @@ jobs:
           path: dist/stage
       - name: Generate manifests without publishing
         shell: pwsh
-        run: ./scripts/generate-bucket.ps1 -Phase Finalize -NoPublish -RecipesPath ./recipes.json -PlanPath ./dist/plan.json -StageDir ./dist/stage -BucketDir ./bucket
+        run: ./scripts/generate-bucket.ps1 -Phase Finalize -PackageName '${{ inputs.package }}' -NoPublish -RecipesPath ./recipes.json -PlanPath ./dist/plan.json -StageDir ./dist/stage -BucketDir ./bucket
       - name: Validate generated JSON
         shell: pwsh
         run: |
@@ -222,7 +228,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-        run: ./scripts/generate-bucket.ps1 -Phase Finalize -RecipesPath ./recipes.json -PlanPath ./dist/plan.json -StageDir ./dist/stage -BucketDir ./bucket
+        run: ./scripts/generate-bucket.ps1 -Phase Finalize -PackageName '${{ inputs.package }}' -RecipesPath ./recipes.json -PlanPath ./dist/plan.json -StageDir ./dist/stage -BucketDir ./bucket
       - name: Commit only deterministic changes
         shell: pwsh
         run: |

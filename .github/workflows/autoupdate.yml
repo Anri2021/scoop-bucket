@@ -81,7 +81,7 @@ jobs:
             [ordered]@{
               package = $_.name; build_type = $_.recipe.build_type; fingerprint = $_.fingerprint.Substring(0, 16)
               runner = $plan.build_environment.runner; python = $plan.build_environment.python
-              node = $plan.build_environment.node; go = $plan.build_environment.go
+              node = $plan.build_environment.node; go = $plan.build_environment.go; dotnet = $plan.build_environment.dotnet
             }
           })
           "build_matrix=$(@{ include = $include } | ConvertTo-Json -Depth 5 -Compress)" >> $env:GITHUB_OUTPUT
@@ -122,6 +122,7 @@ jobs:
             ~\go\pkg\mod
             ~\.cargo\registry
             ~\.cargo\git
+            ~/.nuget/packages
           key: meta-v4-${{ runner.os }}-${{ matrix.package }}-${{ matrix.build_type }}-${{ matrix.fingerprint }}
           restore-keys: |
             meta-v4-${{ runner.os }}-${{ matrix.package }}-${{ matrix.build_type }}-
@@ -144,12 +145,7 @@ jobs:
       - if: matrix.build_type == 'dotnet' || matrix.build_type == 'auto'
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: |
-            6.0.x
-            8.0.x
-            9.0.x
-            10.0.x
-            11.0.x
+          dotnet-version: ${{ matrix.dotnet }}
       - name: Build untrusted sources without a write token
         shell: pwsh
         run: ./scripts/generate-bucket.ps1 -Phase Build -PackageName '${{ matrix.package }}' -RecipesPath ./recipes.json -PlanPath ./dist/plan.json -StageDir ./dist/stage -CacheDir ./dist/cache

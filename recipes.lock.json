@@ -75,12 +75,12 @@
       "artifact": "scapy-2.7.0-b464890ae872-windows-x64.zip"
     },
     "technitium-dns": {
-      "version": "15.4.0",
-      "tag": "v15.4.0",
+      "version": "15.5.0",
+      "tag": "v15.5.0",
       "mode": "cloud",
       "reason": "explicit:cloud",
-      "fingerprint": "b08c41d30f90342bbd8f9f9333ab1af335b965cd99f81ca55783eac0e37c5171",
-      "artifact": "technitium-dns-15.4.0-b08c41d30f90-windows-x64.zip"
+      "fingerprint": "71866227d8098c1605b77d798f700760b66f208a4e7f1540193a0d0769bd5807",
+      "artifact": "technitium-dns-15.5.0-71866227d809-windows-x64.zip"
     },
     "xcaddy": {
       "version": "0.4.7",

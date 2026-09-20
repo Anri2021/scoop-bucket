@@ -1,9 +1,9 @@
 {
-  "version": "15.5.0",
-  "description": "Declarative Desired State Configuration engine for Scoop",
-  "homepage": "https://github.com/Anri2021/scoop-bucket",
+  "version": "1.0.0",
+  "description": "Declarative DSC engine for Scoop",
+  "homepage": "https://github.com/Anri2021/scoop-configure",
   "license": "MIT",
-  "url": "https://github.com/Anri2021/scoop-bucket/releases/download/technitium-dns-v15.5.0/technitium-dns-15.5.0-71866227d809-windows-x64.zip",
-  "hash": "55b11c4e7baf03bba6031df981131a2fff85de09db7088b2ac65af7812bc04ff",
-  "bin": "scripts/scoop-configure.ps1"
+  "url": "https://github.com/Anri2021/scoop-configure/releases/download/v1.0.0/scoop-configure.ps1",
+  "hash": "ed5cc2696f3609918ee7552bfc5a93882a3029b9d1cee4498a6ea7374ae1481a",
+  "bin": "scoop-configure.ps1"
 }

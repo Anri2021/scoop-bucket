@@ -1,6 +1,6 @@
 {
   "engine_version": "4.0",
-  "recipes_sha256": "b9253332a0ea08b0fab367f3724441b5da7808274f50aa80a05c239774de2206",
+  "recipes_sha256": "47c3cfa31574bec09fbed97680679f768764bb9746c184ee44fe8322f2f1a681",
   "packages": {
     "bun": {
       "version": "1.4.2",
@@ -75,12 +75,12 @@
       "artifact": "scapy-2.7.0-b464890ae872-windows-x64.zip"
     },
     "scoop-configure": {
-      "version": "15.5.0",
-      "tag": "technitium-dns-v15.5.0",
+      "version": "1.0.0",
+      "tag": "v1.0.0",
       "mode": "upstream",
       "reason": "explicit:upstream",
-      "fingerprint": "495763464307b38ae37c42931210752e72c8b315ecd2314c64e655ad7355bac2",
-      "artifact": "scoop-configure-15.5.0-495763464307-windows-x64.zip"
+      "fingerprint": "7047d0fc8af57b79709cbce259117ef51fdbcc50843cd8641904c7d58a078004",
+      "artifact": "scoop-configure-1.0.0-7047d0fc8af5-windows-x64.zip"
     },
     "technitium-dns": {
       "version": "15.5.0",

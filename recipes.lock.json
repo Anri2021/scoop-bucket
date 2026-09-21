@@ -59,12 +59,12 @@
       "artifact": "ipv6-advertiser-1.0.2-349cc20bc8b9-windows-x64.zip"
     },
     "repomix": {
-      "version": "1.18.0",
-      "tag": "v1.18.0",
+      "version": "1.18.1",
+      "tag": "v1.18.1",
       "mode": "cloud",
       "reason": "explicit:cloud",
-      "fingerprint": "e28b316b992f3d6b4f0ae0a46fda8898af18bdc404bccad9961cf440fe23a7da",
-      "artifact": "repomix-1.18.0-e28b316b992f-windows-x64.zip"
+      "fingerprint": "d1e525801b063e5a0c59d18dca3738692fe904f511772e62b42f70eeea3b3ff6",
+      "artifact": "repomix-1.18.1-d1e525801b06-windows-x64.zip"
     },
     "scapy": {
       "version": "2.7.0",

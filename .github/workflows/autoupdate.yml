@@ -142,6 +142,11 @@ jobs:
         with:
           go-version: ${{ matrix.go }}
           cache: true
+      - if: matrix.build_type == 'go' || matrix.build_type == 'auto'
+        name: Add MinGW to PATH for CGO
+        shell: pwsh
+        run: |
+          "C:\msys64\mingw64\bin" >> $env:GITHUB_PATH
       - if: matrix.build_type == 'dotnet' || matrix.build_type == 'auto'
         uses: actions/setup-dotnet@v4
         with:

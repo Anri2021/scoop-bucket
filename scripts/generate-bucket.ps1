@@ -390,12 +390,19 @@ function Invoke-BuildPhase {
                 Cmd "dotnet" (@("publish", $proj, "-c", "Release", "-o", $packageDir) + $customArgs)
               }
 			  "go"{
-  							$entry = [string](Prop $plan.recipe "entrypoint" "."); if($entry -and -not ($entry.StartsWith(".") -or $entry.StartsWith("/"))) { $entry = "./$entry" }
-  							$useCgo = [bool](Prop $plan.recipe "cgo" $false)
-  							$customArgs = @(Prop $plan.recipe "build_args" @())
-  							$ldFlags = if($useCgo){ "-linkmode external -extldflags '-static' -s -w" } else { "-s -w" }
-  							$oldCgo = $env:CGO_ENABLED; $env:CGO_ENABLED = if($useCgo){ "1" } else { "0" }
-  							try { Cmd "go" (@("build", "-trimpath", "-ldflags=$ldFlags") + $customArgs + @("-o", (Join-Path $packageDir "$($plan.name).exe"), $entry)) } finally { $env:CGO_ENABLED = $oldCgo }
+  					$entry = [string](Prop $plan.recipe "entrypoint" "."); if($entry -and -not ($entry.StartsWith(".") -or $entry.StartsWith("/"))) { $entry = "./$entry" }
+  					$useCgo = [bool](Prop $plan.recipe "cgo" $false)
+  					$customArgs = @(Prop $plan.recipe "build_args" @())
+  					$ldFlags = if($useCgo){ "-linkmode external -extldflags '-static' -s -w" } else { "-s -w" }
+  					$oldCgo = $env:CGO_ENABLED; $env:CGO_ENABLED = if($useCgo){ "1" } else { "0" }
+					if ($useCgo -and -not (Get-Command gcc -ErrorAction SilentlyContinue)) {
+						if (Test-Path "C:\msys64\mingw64\bin\gcc.exe") {
+						    $env:PATH = "C:\msys64\mingw64\bin;$env:PATH"
+						} else {
+						    throw "CGO is enabled for $($plan.name) but GCC compiler was not found."
+						}
+					}
+  					try { Cmd "go" (@("build", "-trimpath", "-ldflags=$ldFlags") + $customArgs + @("-o", (Join-Path $packageDir "$($plan.name).exe"), $entry)) } finally { $env:CGO_ENABLED = $oldCgo }
   			  }
 			  "caddy"{
                 $oldGoos = $env:GOOS; $oldGoarch = $env:GOARCH

@@ -123,6 +123,9 @@ jobs:
             ~\.cargo\registry
             ~\.cargo\git
             ~/.nuget/packages
+            ~\AppData\Local\go-build
+            ~\AppData\Local\uv\cache
+            ~\AppData\Local\npm-cache
           key: meta-v4-${{ runner.os }}-${{ matrix.package }}-${{ matrix.build_type }}-${{ matrix.fingerprint }}
           restore-keys: |
             meta-v4-${{ runner.os }}-${{ matrix.package }}-${{ matrix.build_type }}-

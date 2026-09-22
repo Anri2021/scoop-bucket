@@ -51,12 +51,12 @@
       "artifact": "headscale-0.29.3-f5db1066abb1-windows-x64.zip"
     },
     "ipv6-advertiser": {
-      "version": "1.0.2",
-      "tag": "v1.0.2",
+      "version": "1.0.3",
+      "tag": "v1.0.3",
       "mode": "cloud",
       "reason": "explicit:cloud",
-      "fingerprint": "55ca8c79d9b5f24309abea424fd4433b1147520130ea5183aff999333f33e3ea",
-      "artifact": "ipv6-advertiser-1.0.2-55ca8c79d9b5-windows-x64.zip"
+      "fingerprint": "7e34381fdce1323e76e1ef7e7cab57cd5e678dc1fb4369a1e1d9efc961adc209",
+      "artifact": "ipv6-advertiser-1.0.3-7e34381fdce1-windows-x64.zip"
     },
     "repomix": {
       "version": "1.18.1",

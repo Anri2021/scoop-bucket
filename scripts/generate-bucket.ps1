@@ -460,6 +460,20 @@ function Invoke-BuildPhase {
 		} | Sort-Object { $_.Length } -Descending | ForEach-Object {
 	    	if (Test-Path -LiteralPath $_) { Remove-Item -LiteralPath $_ -Recurse -Force -ErrorAction SilentlyContinue }
 		}
+		# הבטחת קיום קבצי persist בעלי סיומת בארכיון (למניעת יצירת תיקייה ע"י Scoop)
+        foreach ($p in @(Prop $plan.recipe "persist" @())) {
+            $pStr = [string]$p
+            if ([System.IO.Path]::HasExtension($pStr)) {
+                $targetFile = Join-Path $packageDir $pStr
+                if (-not (Test-Path -LiteralPath $targetFile)) {
+                    $parentDir = Split-Path $targetFile -Parent
+                    if ($parentDir -and -not (Test-Path -LiteralPath $parentDir)) {
+                        New-Item -ItemType Directory -Force -Path $parentDir | Out-Null
+                    }
+                    New-Item -ItemType File -Force -Path $targetFile | Out-Null
+                }
+            }
+        }
         if(-not(Get-ChildItem $packageDir -File -Recurse|Select-Object -First 1)){throw "Empty package"}
         $archive=Join-Path $outputDir $plan.artifact_name
         $level=[int](Prop $plan.recipe "compression_level" 5);$threads=[Math]::Max(1,[int]([Environment]::ProcessorCount/[Math]::Max(1,$activeBuildCount)))

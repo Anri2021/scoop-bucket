@@ -43,12 +43,12 @@
       "artifact": "headplane-0.7.1-41734c28df2e-windows-x64.zip"
     },
     "headscale": {
-      "version": "0.29.3",
-      "tag": "v0.29.3",
+      "version": "0.29.4",
+      "tag": "v0.29.4",
       "mode": "cloud",
       "reason": "explicit:cloud",
-      "fingerprint": "36303c1d93e15fcc849e9768dbb01dcbeb5d4598dc147cd14451cf2559ea25a3",
-      "artifact": "headscale-0.29.3-36303c1d93e1-windows-x64.zip"
+      "fingerprint": "0e1c1fa503224d48d9725d152b05bc6066a39af53058964029cbcefb1871e633",
+      "artifact": "headscale-0.29.4-0e1c1fa50322-windows-x64.zip"
     },
     "ipv6-advertiser": {
       "version": "1.0.4",

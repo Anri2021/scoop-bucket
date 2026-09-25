@@ -19,8 +19,7 @@ try {
       Invoke-Checked "python" @("-m", "pip", "install", "--disable-pip-version-check", "--target", $libDir, "-r", "requirements.txt")
     }
   }
-  $cmdTarget = ($entry -replace '/', '\')
-  @("@echo off", 'set "PYTHONPATH=%~dp0lib;%PYTHONPATH%"', ('python "%~dp0{0}" %*' -f $cmdTarget)) | Set-Content (Join-Path $PackageDir "$($Plan.name).cmd") -Encoding ascii
+  Write-CmdShim -Path (Join-Path $PackageDir "$($Plan.name).cmd") -Command ('python "%~dp0{0}" %*' -f ($entry -replace '/', '\')) -PreCommand 'set "PYTHONPATH=%~dp0lib;%PYTHONPATH%"'
 } finally {
   Pop-Location
 }

@@ -696,9 +696,9 @@ if ($Phase -in @("Plan","All")) {
 if ($Phase -in @("Build","Finalize")) {
   if (-not (Test-Path $PlanPath)) { throw "Plan not found: $PlanPath" }
   $planDocument = Get-Content $PlanPath -Raw -Encoding utf8 | ConvertFrom-Json
-  if ($planDocument.engine_version -ne $EngineVersion) { throw "Plan engine version mismatch." }
-  if ($planDocument.engine_sha256 -ne $EngineSha256) { throw "Plan engine fingerprint mismatch." }
-  if ($planDocument.pipeline_sha256 -ne $PipelineSha256) { throw "Plan pipeline fingerprint mismatch." }
+  if ($planDocument.engine_version -ne $EngineVersion) { throw "Plan engine version mismatch: plan has '$($planDocument.engine_version)', runner has '$EngineVersion'." }
+  if ($planDocument.engine_sha256 -ne $EngineSha256) { throw "Plan engine fingerprint mismatch: plan has '$($planDocument.engine_sha256)', runner has '$EngineSha256'." }
+  if ($planDocument.pipeline_sha256 -ne $PipelineSha256) { throw "Plan pipeline fingerprint mismatch: plan has '$($planDocument.pipeline_sha256)', runner has '$PipelineSha256'." }
   $plans = @($planDocument.packages)
 }
 if ($Phase -in @("Build","All")) { Invoke-BuildPhase $plans }

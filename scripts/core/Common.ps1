@@ -41,7 +41,7 @@ function Get-FileSha256 {
 
 function Invoke-Checked {
   param([string]$File, [string[]]$Arguments)
-  $output = &$File @Arguments 2>&1
+  $output = & $File @Arguments 2>&1
   $output | Out-Host
   if ($LASTEXITCODE -ne 0) {
     $details = ($output | Select-Object -Last 50) -join "`n"
@@ -52,15 +52,15 @@ function Invoke-Checked {
 function Get-CachedFile {
   param([string]$Url, [string]$Path, [string]$ExpectedHash = "")
   if (Test-Path -LiteralPath $Path -PathType Leaf) {
-    $actual = Get-FileSha256$Path
+    $actual = Get-FileSha256 $Path
     if (-not $ExpectedHash -or$actual -eq $ExpectedHash) { return$Path }
     Remove-Item -LiteralPath $Path -Force
   }
   $parent = [IO.Path]::GetDirectoryName([IO.Path]::GetFullPath($Path))
-  $null = New-Item -ItemType Directory -Force -Path$parent
-  Invoke-WebRequest -Uri $Url -OutFile$Path -UseBasicParsing
-  $actual = Get-FileSha256$Path
-  if ($ExpectedHash -and $actual -ne$ExpectedHash) {
+  $null = New-Item -ItemType Directory -Force -Path $parent
+  Invoke-WebRequest -Uri $Url -OutFile $Path -UseBasicParsing
+  $actual = Get-FileSha256 $Path
+  if ($ExpectedHash -and $actual -ne $ExpectedHash) {
     Remove-Item -LiteralPath $Path -Force
     throw "SHA256 mismatch for $Url"
   }

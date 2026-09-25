@@ -265,7 +265,9 @@ jobs:
           scoop bucket add anri https://github.com/${{ github.repository }}
 
           $plan = Get-Content ./dist/plan.json -Raw | ConvertFrom-Json
-          $builtPackages = @($plan.packages | Where-Object needs_build)
+          $builtPackages = @($plan.packages | Where-Object {
+            $_.needs_build -and (Test-Path "./bucket/$($_.name).json") -and ((Get-Content "./bucket/$($_.name).json" -Raw | ConvertFrom-Json).version -eq $_.version)
+          })
 
           foreach ($pkg in $builtPackages) {
             Write-Host "Smoke testing $($pkg.name)..." -ForegroundColor Cyan

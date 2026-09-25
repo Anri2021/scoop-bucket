@@ -7,14 +7,18 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 function Get-Prop {
-  param([object]$Object, [string]$Name, $Default =$null)
-  if ($null -eq$Object) { return $Default }$property = $Object.PSObject.Properties[$Name]
-  if ($null -eq $property -or$null -eq $property.Value) { return$Default }
+  param([object]$Object, [string]$Name, $Default = $null)
+  if ($null -eq $Object) { return $Default }
+  $property = $Object.PSObject.Properties[$Name]
+  if ($null -eq $property -or $null -eq $property.Value) { return $Default }
   return $property.Value
 }
 
 function Write-Utf8Json {
-  param([string]$Path, [object]$Value, [int]$Depth = 20)$parent = [IO.Path]::GetDirectoryName([IO.Path]::GetFullPath($Path))$null = New-Item -ItemType Directory -Force -Path $parent$json = $Value \vert{} ConvertTo-Json -Depth$Depth
+  param([string]$Path, [object]$Value, [int]$Depth = 20)
+  $parent = [IO.Path]::GetDirectoryName([IO.Path]::GetFullPath($Path))
+  $null = New-Item -ItemType Directory -Force -Path $parent
+  $json = $Value | ConvertTo-Json -Depth $Depth
   [IO.File]::WriteAllText([IO.Path]::GetFullPath($Path), $json + [Environment]::NewLine, [Text.UTF8Encoding]::new($false))
 }
 
@@ -64,7 +68,8 @@ function Get-CachedFile {
 }
 
 function Get-BuilderSha256 {
-  param([string]$BuildType, [string]$BuildersDir)$builderPath = Join-Path $BuildersDir "$BuildType.ps1"
+  param([string]$BuildType, [string]$BuildersDir)
+  $builderPath = Join-Path $BuildersDir "$BuildType.ps1"
   if (Test-Path -LiteralPath $builderPath) {
     return (Get-FileSha256 $builderPath)
   }
@@ -77,12 +82,13 @@ function Write-CmdShim {
     [string]$Command,
     [string]$PreCommand = ""
   )
-  $lines = [System.Collections.Generic.List[string]]::new()$lines.Add("@echo off")
+  $lines = [System.Collections.Generic.List[string]]::new()
+  $lines.Add("@echo off")
   if ($PreCommand) { $lines.Add($PreCommand) }
   $lines.Add($Command)
   $parent = [System.IO.Path]::GetDirectoryName([System.IO.Path]::GetFullPath($Path))
-  if ($parent -and -not (Test-Path -LiteralPath$parent)) {
-    $null = New-Item -ItemType Directory -Force -Path$parent
+  if ($parent -and -not (Test-Path -LiteralPath $parent)) {
+    $null = New-Item -ItemType Directory -Force -Path $parent
   }
-  [System.IO.File]::WriteAllLines([System.IO.Path]::GetFullPath($Path),$lines, [System.Text.Encoding]::ASCII)
+  [System.IO.File]::WriteAllLines([System.IO.Path]::GetFullPath($Path), $lines, [System.Text.Encoding]::ASCII)
 }

@@ -528,13 +528,17 @@ function Invoke-FinalizePhase {
   $successfulPlans = [Collections.Generic.List[object]]::new()
 
   foreach ($plan in @($Plans | Where-Object needs_build)) {
-    $result = $results[$plan.name]
-    if (-not $result -or $result.status -ne "built") {
-      Write-Warning "Skipping '$($plan.name)' (Status: $($result.status), Error: $($result.error))"
+    $result = if ($results.ContainsKey($plan.name)) { $results[$plan.name] } else { $null }
+    $status = if ($result) { [string](Get-Prop $result "status" "missing") } else { "missing" }
+    $errorMsg = if ($result) { [string](Get-Prop $result "error" "No error reported") } else { "Build step did not run or artifact was not found" }
+    if ($status -ne "built") {
+      Write-Warning "Skipping '$($plan.name)' (Status: $status, Error: $errorMsg)"
       continue
     }
-    $archive = Get-ChildItem -LiteralPath $StageDir -Filter $result.archive -File -Recurse | Select-Object -First 1
-    if (-not $archive -or (Get-FileSha256 $archive.FullName) -ne $result.hash) {
+    $archiveName = [string](Get-Prop $result "archive" "")
+    $archiveHash = [string](Get-Prop $result "hash" "")
+    $archive = if ($archiveName) { Get-ChildItem -LiteralPath $StageDir -Filter $archiveName -File -Recurse | Select-Object -First 1 } else { $null }
+    if (-not $archive -or (Get-FileSha256 $archive.FullName) -ne $archiveHash) {
       Write-Warning "Staged archive missing or hash mismatch for '$($plan.name)'."
       continue
     }

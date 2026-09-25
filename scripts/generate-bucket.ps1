@@ -45,25 +45,12 @@ $EngineSha256 = (Get-FileSha256 $EnginePath).ToLowerInvariant()
 $BuildEnvironmentPath = [IO.Path]::GetFullPath($BuildEnvironmentPath)
 if (-not (Test-Path -LiteralPath $BuildEnvironmentPath)) { throw "Build environment file not found: $BuildEnvironmentPath" }
 $BuildEnvironment = Get-Content -LiteralPath $BuildEnvironmentPath -Raw -Encoding utf8 | ConvertFrom-Json
-$BuildEnvironmentSha256 = (Get-FileSha256 $BuildEnvironmentPath).ToLowerInvariant()
-$PipelineBytes = [Text.Encoding]::UTF8.GetBytes("$EngineSha256`n$BuildEnvironmentSha256")
-$PipelineSha256 = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($PipelineBytes)).ToLowerInvariant()
+$PipelineSha256 = Get-PipelineSha256 -EnginePath $EnginePath -BuildEnvironmentPath $BuildEnvironmentPath
 
 function Invoke-BuildPhase {
   param([object[]]$Plans)
   if ($PackageName) {
-    $allPlans = @($Plans); $allByName = @{}; foreach ($candidate in $allPlans) { $allByName[$candidate.name] = $candidate }
-    if (-not $allByName.ContainsKey($PackageName)) { throw "Planned package '$PackageName' was not found." }
-    $selected = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase); $null = $selected.Add($PackageName)
-    $pending = [Collections.Generic.Queue[string]]::new(); $pending.Enqueue($PackageName)
-    while ($pending.Count) {
-      $current = $pending.Dequeue()
-      foreach ($dependency in @(Get-Prop $allByName[$current].recipe "tool_dependencies" @())) {
-        if (-not $allByName.ContainsKey([string]$dependency)) { throw "Missing tool dependency '$dependency'." }
-        if ($selected.Add([string]$dependency)) { $pending.Enqueue([string]$dependency) }
-      }
-    }
-    $Plans = @($allPlans | Where-Object { $selected.Contains([string]$_.name) })
+    $Plans = Get-DependencyClosure -Recipes $Plans -PackageName $PackageName
   }
 
   $levels = Get-DependencyLevels @($Plans | ForEach-Object { $_.recipe })
@@ -215,7 +202,12 @@ function Invoke-BuildPhase {
         } else {
           $builderFile = Join-Path $buildersDir "$type.ps1"
           if (-not (Test-Path -LiteralPath $builderFile)) { throw "Builder script not found for '$type': $builderFile" }
-          & $builderFile -Plan $plan -SourceRoot $sourceRoot -PackageDir $packageDir -CacheRoot $cacheRoot
+          Push-Location $sourceRoot
+          try {
+            & $builderFile -Plan $plan -SourceRoot $sourceRoot -PackageDir $packageDir -CacheRoot $cacheRoot
+          } finally {
+            Pop-Location
+          }
         }
 
         $junkDirs = @([System.IO.Directory]::EnumerateDirectories($packageDir, "*", [System.IO.SearchOption]::AllDirectories)) |
@@ -289,18 +281,7 @@ $targetRepository = if ($env:GITHUB_REPOSITORY) { $env:GITHUB_REPOSITORY } else 
 
 if ($Phase -in @("Plan","All")) {
   if ($PackageName) {
-    $byName = @{}; foreach ($r in $recipes) { $byName[$r.name] = $r }
-    if (-not $byName.ContainsKey($PackageName)) { throw "Recipe '$PackageName' not found." }
-    $selected = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
-    $null = $selected.Add($PackageName)
-    $queue = [Collections.Generic.Queue[string]]::new(); $queue.Enqueue($PackageName)
-    while ($queue.Count) {
-      $curr = $queue.Dequeue()
-      foreach ($dep in @(Get-Prop $byName[$curr] "tool_dependencies" @())) {
-        if ($selected.Add([string]$dep)) { $queue.Enqueue([string]$dep) }
-      }
-    }
-    $recipes = @($recipes | Where-Object { $selected.Contains($_.name) })
+    $recipes = Get-DependencyClosure -Recipes $recipes -PackageName $PackageName
   }
   $plans = Resolve-Plans -Recipes $recipes -TargetRepository $targetRepository -Engine $EngineVersion -EngineHash $PipelineSha256 -CacheDir $CacheDir -CommonPath $CommonPath -BuildersDir $BuildersDir -ThrottleLimit $ThrottleLimit -Force:$ForceRebuild
   $planDocument = [ordered]@{ engine_version = $EngineVersion; engine_sha256 = $EngineSha256; build_environment_sha256 = $BuildEnvironmentSha256; pipeline_sha256 = $PipelineSha256; build_environment = $BuildEnvironment; recipes_sha256 = (Get-FileSha256 $RecipesPath); packages = $plans }

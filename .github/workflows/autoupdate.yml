@@ -33,7 +33,7 @@ concurrency:
 
 jobs:
   contract-tests:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       contents: read
@@ -193,18 +193,7 @@ jobs:
       - name: Verify staged ZIPs with the Windows native extractor
         if: needs.build.result != 'skipped'
         shell: pwsh
-        run: |
-          $plan = Get-Content ./dist/plan.json -Raw | ConvertFrom-Json
-          foreach ($package in @($plan.packages | Where-Object needs_build)) {
-            $archive = Get-ChildItem ./dist/stage -Filter $package.artifact_name -File -Recurse | Select-Object -First 1
-            if (-not $archive) { continue }
-            $target = Join-Path $env:RUNNER_TEMP "verify-$($package.name)"
-            Expand-Archive -LiteralPath $archive.FullName -DestinationPath $target -Force
-            $bin = [string]$package.recipe.bin
-            if ($bin -and -not (Test-Path -LiteralPath (Join-Path $target $bin))) {
-              throw "Expected executable '$bin' is missing from $($package.name)."
-            }
-          }
+        run: ./tests/verify-artifacts.ps1 -PlanPath ./dist/plan.json -StageDir ./dist/stage
 
   publish:
     if: always() && github.event_name != 'pull_request' && needs.plan.result == 'success' && needs.build.result != 'cancelled'
@@ -260,27 +249,4 @@ jobs:
           path: dist
       - name: Install Scoop and dynamically test built packages
         shell: pwsh
-        run: |
-          Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
-          Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
-          $env:PATH = "$HOME\scoop\shims;$env:PATH"
-
-          scoop bucket add anri https://github.com/${{ github.repository }}
-
-          $plan = Get-Content ./dist/plan.json -Raw | ConvertFrom-Json
-          $builtPackages = @($plan.packages | Where-Object {
-            $_.needs_build -and (Test-Path "./bucket/$($_.name).json") -and ((Get-Content "./bucket/$($_.name).json" -Raw | ConvertFrom-Json).version -eq $_.version)
-          })
-
-          foreach ($pkg in $builtPackages) {
-            Write-Host "Smoke testing $($pkg.name)..." -ForegroundColor Cyan
-            scoop install "anri/$($pkg.name)"
-
-            $bins = @($pkg.recipe.bin)
-            foreach ($bin in $bins) {
-              $cmdName = [IO.Path]::GetFileNameWithoutExtension($bin)
-              if (-not (Get-Command $cmdName -ErrorAction SilentlyContinue)) {
-                throw "Shim '$cmdName' for package '$($pkg.name)' was not created properly."
-              }
-            }
-          }
+        run: ./tests/smoke-test.ps1 -PlanPath ./dist/plan.json

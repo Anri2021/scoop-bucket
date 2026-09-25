@@ -464,8 +464,8 @@ function Invoke-BuildPhase {
 '@ -replace "`r`n", "`n"
                 Set-Content (Join-Path $sourceRoot "build.sh") -Value $buildScript -Encoding ascii
                 Cmd $bash @("-lc", ("cd '{0}' && ./build.sh" -f ($sourceRoot -replace '\\', '/')))
-                Get-ChildItem (Join-Path $sourceRoot "src/util/.libs/*.exe") \vert{} Copy-Item -Destination $packageDir -Force
-                Get-ChildItem (Join-Path $sourceRoot "src/libmdb/.libs/*.dll") \vert{} Copy-Item -Destination $packageDir -Force
+                Get-ChildItem (Join-Path $sourceRoot "src/util/.libs/*.exe") | Copy-Item -Destination $packageDir -Force
+                Get-ChildItem (Join-Path $sourceRoot "src/libmdb/.libs/*.dll") | Copy-Item -Destination $packageDir -Force
                 Get-ChildItem "C:\msys64\mingw64\bin\libglib-2.0-0.dll", "C:\msys64\mingw64\bin\libintl-8.dll", "C:\msys64\mingw64\bin\libiconv-2.dll" | Copy-Item -Destination $packageDir -Force -ErrorAction SilentlyContinue
               }
               default{throw "Unsupported build_type '$type'"}

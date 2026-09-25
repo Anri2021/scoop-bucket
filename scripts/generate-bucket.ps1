@@ -575,13 +575,15 @@ function Invoke-FinalizePhase {
 
   $lockFilePath = Join-Path ([IO.Path]::GetDirectoryName([IO.Path]::GetFullPath($RecipesPath))) "recipes.lock.json"
   $existingLock = if (Test-Path -LiteralPath $lockFilePath) { Get-Content -LiteralPath $lockFilePath -Raw -Encoding utf8 | ConvertFrom-Json } else { $null }
-  $successfulBuildNames = [Collections.Generic.HashSet[string]]::new([string[]]@($successfulPlans.name), [StringComparer]::OrdinalIgnoreCase)
-
+  $existingPackages = if ($existingLock) { Get-Prop $existingLock "packages" } else { $null }
+  $successfulBuildNames = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+  foreach ($sp in $successfulPlans) { $null = $successfulBuildNames.Add([string]$sp.name) }
+  
   foreach ($plan in $Plans | Sort-Object name) {
     if ($plan.needs_build -and -not $successfulBuildNames.Contains($plan.name)) {
       Write-Warning "Package '$($plan.name)' was not built; retaining existing lock entry."
-      if ($existingLock -and $existingLock.packages.PSObject.Properties[$plan.name]) {
-        $lockPackages[$plan.name] = $existingLock.packages.PSObject.Properties[$plan.name].Value
+      if ($existingPackages -and $existingPackages.PSObject.Properties[$plan.name]) {
+        $lockPackages[$plan.name] = $existingPackages.PSObject.Properties[$plan.name].Value
       }
       continue
     }

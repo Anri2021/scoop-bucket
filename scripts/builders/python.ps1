@@ -1,8 +1,7 @@
 [CmdletBinding()]
 param($Plan, $SourceRoot, $PackageDir, $CacheRoot)
 
-Push-Location $SourceRoot
-try {
+
   $entry = [string](Get-Prop $Plan.recipe "entrypoint" "")
   if (-not $entry -or -not (Test-Path $entry)) {
     if (Test-Path "scapy/main.py") { $entry = "scapy/main.py" }
@@ -20,6 +19,4 @@ try {
     }
   }
   Write-CmdShim -Path (Join-Path $PackageDir "$($Plan.name).cmd") -Command ('python "%~dp0{0}" %*' -f ($entry -replace '/', '\')) -PreCommand 'set "PYTHONPATH=%~dp0lib;%PYTHONPATH%"'
-} finally {
-  Pop-Location
-}
+

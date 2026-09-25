@@ -1,8 +1,7 @@
 [CmdletBinding()]
 param($Plan, $SourceRoot, $PackageDir, $CacheRoot)
 
-Push-Location $SourceRoot
-try {
+
   Invoke-Checked "corepack" @("enable")
   if (Test-Path "pnpm-lock.yaml") {
     Invoke-Checked "pnpm" @("install", "--frozen-lockfile")
@@ -45,6 +44,4 @@ try {
 
   $pre = if (@(Get-Prop $Plan.recipe "persist" @()).Count -gt 0) { 'cd /d "%~dp0"' } else { "" }
   Write-CmdShim -Path (Join-Path $PackageDir "$($Plan.name).cmd") -Command ('node "%~dp0{0}" %*' -f ($entry -replace '/', '\')) -PreCommand $pre
-} finally {
-  Pop-Location
-}
+

@@ -1,0 +1,54 @@
+[CmdletBinding()]
+param($Plan, $SourceRoot, $PackageDir, $CacheRoot)
+
+Push-Location $SourceRoot
+try {
+  Invoke-Checked "corepack" @("enable")
+  if (Test-Path "pnpm-lock.yaml") {
+    Invoke-Checked "pnpm" @("install", "--frozen-lockfile")
+    Invoke-Checked "pnpm" @("run", "build")
+  } else {
+    Invoke-Checked "npm" @("install", "--ignore-scripts")
+    Invoke-Checked "npm" @("run", "build")
+  }
+
+  $entry = [string](Get-Prop $Plan.recipe "entrypoint" "")
+  if (-not $entry) {
+    if (Test-Path "package.json") {
+      $pkgJson = Get-Content "package.json" -Raw | ConvertFrom-Json
+      if ($pkgJson.bin) {
+        $entry = if ($pkgJson.bin -is [string]) { $pkgJson.bin } else { ($pkgJson.bin.PSObject.Properties | Select-Object -First 1).Value }
+      } elseif ($pkgJson.main) {
+        $entry = $pkgJson.main
+      }
+    }
+    if (-not $entry -and (Test-Path "index.js")) { $entry = "index.js" }
+  }
+  if (-not $entry) { throw "Entrypoint not found for $($Plan.name)" }
+
+  $extraDirs = @(Get-Prop $Plan.recipe "output_dirs" @())
+  $targets = @("bin", "build", "dist", "lib", "package.json", "package-lock.json", "pnpm-lock.yaml") + $extraDirs
+  foreach ($p in ($targets | Select-Object -Unique)) {
+    if (Test-Path $p) { Copy-Item $p $PackageDir -Recurse -Force }
+  }
+
+  Push-Location $PackageDir
+  try {
+    if (Test-Path "pnpm-lock.yaml") {
+      Invoke-Checked "pnpm" @("install", "--prod", "--frozen-lockfile", "--config.node-linker=hoisted")
+    } else {
+      Invoke-Checked "npm" @("install", "--omit=dev", "--ignore-scripts", "--no-audit", "--no-fund")
+    }
+  } finally {
+    Pop-Location
+  }
+
+  $cmdTarget = ($entry -replace '/', '\')
+  $cmdLines = [Collections.Generic.List[string]]::new()
+  $cmdLines.Add("@echo off")
+  if (@(Get-Prop $Plan.recipe "persist" @()).Count -gt 0) { $cmdLines.Add('cd /d "%~dp0"') }
+  $cmdLines.Add(('node "%~dp0{0}" %*' -f $cmdTarget))
+  $cmdLines | Set-Content (Join-Path $PackageDir "$($Plan.name).cmd") -Encoding ascii
+} finally {
+  Pop-Location
+}

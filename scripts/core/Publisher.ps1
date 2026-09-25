@@ -113,14 +113,14 @@ function Invoke-FinalizePhase {
 
   if (-not $NoPublish -and $staged.Count) {
     $publishItems = @($successfulPlans | ForEach-Object { [pscustomobject]@{ name = $_.name; release_tag = $_.release_tag; version = $_.version; fingerprint = $_.fingerprint; archive = $staged[$_.name] } })
+    $commonPath = Join-Path $PSScriptRoot "Common.ps1"
     $publishResults = @($publishItems | ForEach-Object -Parallel {
       $item = $_; $repo = $using:TargetRepository
-      $ghExe = (Get-Command gh -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
-      function Invoke-GhChecked { param([string]$Executable, [string[]]$Arguments); & $Executable @Arguments 2>&1 | Out-Host; if ($LASTEXITCODE -ne 0) { throw "gh failed with code $LASTEXITCODE" } }
+      . $using:commonPath
       try {
-        & $ghExe release view $item.release_tag --repo $repo 2>$null 1>$null
-        if ($LASTEXITCODE -ne 0) { Invoke-GhChecked $ghExe @("release", "create", $item.release_tag, "--repo", $repo, "--title", "$($item.name) $($item.version)", "--notes", "Meta-Bucket build $($item.fingerprint).") }
-        Invoke-GhChecked $ghExe @("release", "upload", $item.release_tag, $item.archive, "--repo", $repo, "--clobber")
+        & gh release view $item.release_tag --repo $repo 2>$null 1>$null
+        if ($LASTEXITCODE -ne 0) { Invoke-Checked "gh" @("release", "create", $item.release_tag, "--repo", $repo, "--title", "$($item.name) $($item.version)", "--notes", "Meta-Bucket build $($item.fingerprint).") }
+        Invoke-Checked "gh" @("release", "upload", $item.release_tag, $item.archive, "--repo", $repo, "--clobber")
         [pscustomobject]@{ name = $item.name; error = $null }
       } catch {
         [pscustomobject]@{ name = $item.name; error = $_.Exception.Message }

@@ -19,6 +19,17 @@ $plan = Get-Content -LiteralPath $PlanPath -Raw -Encoding utf8 | ConvertFrom-Jso
 $builtPackages = @($plan.packages | Where-Object needs_build)
 
 foreach ($pkg in $builtPackages) {
+  $manifestPath = "$HOME\scoop\buckets\anri\bucket\$($pkg.name).json"
+  if (-not (Test-Path -LiteralPath $manifestPath)) {
+    Write-Warning "Skipping $($pkg.name): manifest not found in bucket."
+    continue
+  }
+  $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+  if ($manifest.version -ne $pkg.version) {
+    Write-Warning "Skipping $($pkg.name): bucket manifest version ($($manifest.version)) does not match planned version ($($pkg.version))."
+    continue
+  }
+
   Write-Host "Smoke testing $($pkg.name)..." -ForegroundColor Cyan
   scoop install "anri/$($pkg.name)"
 

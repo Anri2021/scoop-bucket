@@ -451,6 +451,23 @@ function Invoke-BuildPhase {
               }
               "bun"{Cmd "bun" @("install","--frozen-lockfile");Cmd "bun" @("run","build");$out=[string](Prop $plan.recipe "output_path" "dist");Copy-Item $out $packageDir -Recurse -Force}
               "powershell"{$entry=[string](Prop $plan.recipe "entrypoint" (Prop $plan.recipe "bin"));Copy-Item $entry $packageDir}
+			  "c"{
+                $bash = "C:\msys64\usr\bin\bash.exe"
+                if (-not (Test-Path $bash)) { throw "MSYS2 bash was not found." }
+                $buildScript = @'
+                set -e
+                export PATH="/mingw64/bin:/usr/bin:$PATH"
+                pacman -S --noconfirm --needed mingw-w64-x86_64-gcc mingw-w64-x86_64-glib2 autoconf automake libtool bison flex make
+                autoreconf -fi
+                ./configure --prefix=/mingw64 --disable-man
+                make -j$(nproc)
+'@ -replace "`r`n", "`n"
+                Set-Content (Join-Path $sourceRoot "build.sh") -Value $buildScript -Encoding ascii
+                Cmd $bash @("-lc", ("cd '{0}' && ./build.sh" -f ($sourceRoot -replace '\\', '/')))
+                Get-ChildItem (Join-Path $sourceRoot "src/util/.libs/*.exe") \vert{} Copy-Item -Destination $packageDir -Force
+                Get-ChildItem (Join-Path $sourceRoot "src/libmdb/.libs/*.dll") \vert{} Copy-Item -Destination $packageDir -Force
+                Get-ChildItem "C:\msys64\mingw64\bin\libglib-2.0-0.dll", "C:\msys64\mingw64\bin\libintl-8.dll", "C:\msys64\mingw64\bin\libiconv-2.dll" | Copy-Item -Destination $packageDir -Force -ErrorAction SilentlyContinue
+              }
               default{throw "Unsupported build_type '$type'"}
             }
           } finally{Pop-Location}

@@ -73,7 +73,8 @@ try{
   Assert-True (@($local.depends)-contains"fixture-upstream") "tool dependency must be preserved"
   Assert-True (@($hybrid.pre_install).Count-ge3) "hybrid manifest must complete locally"
   Assert-True ($upstream.url-eq"https://example.invalid/tool.zip") "upstream must remain pass-through"
-  Assert-True ((Get-Content $enginePath -Raw)-match'windows-x64\.zip') "cloud packages must use Scoop-compatible ZIP archives"
+  $plannerPath = Join-Path $RepositoryRoot "scripts/core/Planner.ps1"
+  Assert-True ((Get-Content $plannerPath -Raw) -match 'windows-x64\.zip') "cloud packages must use Scoop-compatible ZIP archives"
 
   $generatedLock=Join-Path (Split-Path $recipesPath -Parent) "recipes.lock.json"
   $first=(Get-FileHash $generatedLock -Algorithm SHA256).Hash

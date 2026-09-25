@@ -14,10 +14,10 @@ $recipesPath=$sourceRecipesPath
 $schemaPath=Join-Path $RepositoryRoot "schemas/recipes.schema.json"
 $enginePath=Join-Path $RepositoryRoot "scripts/generate-bucket.ps1"
 $engineSha=(Get-FileHash -LiteralPath $enginePath -Algorithm SHA256).Hash.ToLowerInvariant()
-$buildEnvironmentPath=Join-Path $RepositoryRoot "build-environment.json"
-$buildEnvironmentSha=(Get-FileHash -LiteralPath $buildEnvironmentPath -Algorithm SHA256).Hash.ToLowerInvariant()
-$pipelineBytes=[Text.Encoding]::UTF8.GetBytes("$engineSha`n$buildEnvironmentSha")
-$pipelineSha=[Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($pipelineBytes)).ToLowerInvariant()
+. (Join-Path $RepositoryRoot "scripts/core/Common.ps1")
+$buildEnvironmentPath = Join-Path $RepositoryRoot "build-environment.json"
+$pipelineSha = Get-PipelineSha256 -EnginePath $enginePath -BuildEnvironmentPath $buildEnvironmentPath
+
 $recipesJson=Get-Content $recipesPath -Raw -Encoding utf8
 Assert-True ($recipesJson|Test-Json -SchemaFile $schemaPath) "recipes.json must match its schema"
 

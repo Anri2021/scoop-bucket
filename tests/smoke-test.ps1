@@ -16,9 +16,7 @@ $env:PATH = "$HOME\scoop\shims;$env:PATH"
 scoop bucket add anri "https://github.com/$Repository"
 
 $plan = Get-Content -LiteralPath $PlanPath -Raw -Encoding utf8 | ConvertFrom-Json
-$builtPackages = @($plan.packages | Where-Object {
-  $_.needs_build -and (Test-Path "./bucket/$($_.name).json") -and ((Get-Content "./bucket/$($_.name).json" -Raw | ConvertFrom-Json).version -eq $_.version)
-})
+$builtPackages = @($plan.packages | Where-Object needs_build)
 
 foreach ($pkg in $builtPackages) {
   Write-Host "Smoke testing $($pkg.name)..." -ForegroundColor Cyan

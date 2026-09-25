@@ -3,8 +3,8 @@
   "description": "An open source, self-hosted implementation of the Tailscale control server",
   "homepage": "https://github.com/juanfont/headscale",
   "license": "BSD-3-Clause",
-  "url": "https://github.com/Anri2021/scoop-bucket/releases/download/headscale-v0.29.4/headscale-0.29.4-e9c54a829a7d-windows-x64.zip",
-  "hash": "d46d5eb9cf35505b6696a70ad94eda63689a0d7d4834332c6db2a16f2796c4d6",
+  "url": "https://github.com/Anri2021/scoop-bucket/releases/download/headscale-v0.29.4/headscale-0.29.4-0228aa5668a0-windows-x64.zip",
+  "hash": "ffa28a3ee3f19a8c66590ddebe125a7f8c1eeb70d39481f92511ee130237ed67",
   "bin": "headscale.exe",
   "persist": "config.yaml"
 }

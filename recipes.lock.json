@@ -1,6 +1,6 @@
 {
   "engine_version": "4.0",
-  "recipes_sha256": "1228bd7db898adb2ba71e1f858bfb2466c2e3affa94c634929b2ad8ba40f815a",
+  "recipes_sha256": "5338f5aae6a5cf4eb9e6628d9b4955d894b2ae090c0def020504d5626197044c",
   "packages": {
     "bun": {
       "version": "1.4.2",
@@ -39,16 +39,16 @@
       "tag": "v0.7.1",
       "mode": "cloud",
       "reason": "explicit:cloud",
-      "fingerprint": "6a61f43243c419e33a7bb52a1056c60f462a5507c0f38abefcad5b43cbd85b7c",
-      "artifact": "headplane-0.7.1-6a61f43243c4-windows-x64.zip"
+      "fingerprint": "64dfc1ce298f02cff157e22468500160cecd5b3a9907ca10d83ce5bcacfd0b36",
+      "artifact": "headplane-0.7.1-64dfc1ce298f-windows-x64.zip"
     },
     "headscale": {
       "version": "0.29.4",
       "tag": "v0.29.4",
       "mode": "cloud",
       "reason": "explicit:cloud",
-      "fingerprint": "e9c54a829a7d44196d62430ac70ed37be2e792c28f45b2397efdbc4121b9f94e",
-      "artifact": "headscale-0.29.4-e9c54a829a7d-windows-x64.zip"
+      "fingerprint": "0228aa5668a0397f2252a92f37d0bb4bc33898fa41cadb272ea19d1765a4322e",
+      "artifact": "headscale-0.29.4-0228aa5668a0-windows-x64.zip"
     },
     "ipv6-advertiser": {
       "version": "1.0.4",
@@ -63,8 +63,8 @@
       "tag": "v1.18.1",
       "mode": "cloud",
       "reason": "explicit:cloud",
-      "fingerprint": "1afe9b2a9c4839bc29a0cac2cdb81e209136ca025f7c6d91c53ba237088f4348",
-      "artifact": "repomix-1.18.1-1afe9b2a9c48-windows-x64.zip"
+      "fingerprint": "5f32cdfedb9c82c6e8f8f5d1a7b99563cc52b7641f55a906be533ef06c1c39b6",
+      "artifact": "repomix-1.18.1-5f32cdfedb9c-windows-x64.zip"
     },
     "scapy": {
       "version": "2.7.0",
@@ -87,8 +87,8 @@
       "tag": "v15.5.0",
       "mode": "cloud",
       "reason": "explicit:cloud",
-      "fingerprint": "544636c6f503e2b72e7170b3961a14291966acab95be69451d8cfc43db5078d2",
-      "artifact": "technitium-dns-15.5.0-544636c6f503-windows-x64.zip"
+      "fingerprint": "311f1b24407e8770d5f515bd148af3e04a8fb1874113831f4a1fa10e0f686bdf",
+      "artifact": "technitium-dns-15.5.0-311f1b24407e-windows-x64.zip"
     },
     "xcaddy": {
       "version": "0.4.7",

@@ -16,6 +16,7 @@ $enginePath=Join-Path $RepositoryRoot "scripts/generate-bucket.ps1"
 $engineSha=(Get-FileHash -LiteralPath $enginePath -Algorithm SHA256).Hash.ToLowerInvariant()
 . (Join-Path $RepositoryRoot "scripts/core/Common.ps1")
 $buildEnvironmentPath = Join-Path $RepositoryRoot "build-environment.json"
+$buildEnvironmentSha = (Get-FileSha256 $buildEnvironmentPath)
 $pipelineSha = Get-PipelineSha256 -EnginePath $enginePath -BuildEnvironmentPath $buildEnvironmentPath
 
 $recipesJson=Get-Content $recipesPath -Raw -Encoding utf8

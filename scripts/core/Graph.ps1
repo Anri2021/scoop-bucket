@@ -50,3 +50,19 @@ function Assert-Recipes {
   }
   $null = Get-DependencyLevels $Recipes
 }
+
+function Get-DependencyClosure {
+  param([object[]]$Recipes, [string]$PackageName)
+  $byName = @{}; foreach ($r in $Recipes) { $byName[$r.name] = $r }
+  if (-not $byName.ContainsKey($PackageName)) { throw "Recipe '$PackageName' not found." }
+  $selected = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+  $null = $selected.Add($PackageName)
+  $queue = [Collections.Generic.Queue[string]]::new(); $queue.Enqueue($PackageName)
+  while ($queue.Count) {
+    $curr = $queue.Dequeue()
+    foreach ($dep in @(Get-Prop $byName[$curr] "tool_dependencies" @())) {
+      if ($selected.Add([string]$dep)) { $queue.Enqueue([string]$dep) }
+    }
+  }
+  return @($Recipes | Where-Object { $selected.Contains($_.name) })
+}

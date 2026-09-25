@@ -45,6 +45,7 @@ $EngineSha256 = (Get-FileSha256 $EnginePath).ToLowerInvariant()
 $BuildEnvironmentPath = [IO.Path]::GetFullPath($BuildEnvironmentPath)
 if (-not (Test-Path -LiteralPath $BuildEnvironmentPath)) { throw "Build environment file not found: $BuildEnvironmentPath" }
 $BuildEnvironment = Get-Content -LiteralPath $BuildEnvironmentPath -Raw -Encoding utf8 | ConvertFrom-Json
+$BuildEnvironmentSha256 = (Get-FileSha256 $BuildEnvironmentPath)
 $PipelineSha256 = Get-PipelineSha256 -EnginePath $EnginePath -BuildEnvironmentPath $BuildEnvironmentPath
 
 function Invoke-BuildPhase {

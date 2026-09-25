@@ -6,7 +6,7 @@ if (-not (Test-Path $bash)) { throw "MSYS2 bash was not found." }
 $buildScript = @'
 set -e
 export PATH="/mingw64/bin:/usr/bin:$PATH"
-pacman -S --noconfirm --needed mingw-w64-x86_64-gcc mingw-w64-x86_64-glib2 autoconf automake libtool bison flex make
+pacman -S --noconfirm --needed mingw-w64-x86_64-gcc mingw-w64-x86_64-glib2 mingw-w64-x86_64-pkgconf autoconf automake libtool bison flex make
 autoreconf -fi
 ./configure --prefix=/mingw64 --disable-man
 make -j$(nproc)

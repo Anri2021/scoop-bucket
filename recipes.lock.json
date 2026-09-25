@@ -39,8 +39,8 @@
       "tag": "v0.7.1",
       "mode": "cloud",
       "reason": "explicit:cloud",
-      "fingerprint": "64dfc1ce298f02cff157e22468500160cecd5b3a9907ca10d83ce5bcacfd0b36",
-      "artifact": "headplane-0.7.1-64dfc1ce298f-windows-x64.zip"
+      "fingerprint": "3ea1d6db7d9a09592b348443996ca9c1c9ca986ab4fd36d05c9d2bc544b38aff",
+      "artifact": "headplane-0.7.1-3ea1d6db7d9a-windows-x64.zip"
     },
     "headscale": {
       "version": "0.29.4",
@@ -55,8 +55,8 @@
       "tag": "v1.0.4",
       "mode": "cloud",
       "reason": "explicit:cloud",
-      "fingerprint": "8a87ab0764e3233a7fbcfdf9e93fa5b1d2aba740bc2eee4b7616c1827ad46f2a",
-      "artifact": "ipv6-advertiser-1.0.4-8a87ab0764e3-windows-x64.zip"
+      "fingerprint": "1a68582f517730598c8e47d7c6490acad7db9645fe1f68ed96e62bbaf341f7df",
+      "artifact": "ipv6-advertiser-1.0.4-1a68582f5177-windows-x64.zip"
     },
     "mdbtools": {
       "version": "1.0.1",
@@ -71,16 +71,16 @@
       "tag": "v1.18.1",
       "mode": "cloud",
       "reason": "explicit:cloud",
-      "fingerprint": "5f32cdfedb9c82c6e8f8f5d1a7b99563cc52b7641f55a906be533ef06c1c39b6",
-      "artifact": "repomix-1.18.1-5f32cdfedb9c-windows-x64.zip"
+      "fingerprint": "307d7c243c68b9c79ec13dcb709fa44ddda30771a667bef3ae04b71434579587",
+      "artifact": "repomix-1.18.1-307d7c243c68-windows-x64.zip"
     },
     "scapy": {
       "version": "2.7.0",
       "tag": "v2.7.0",
       "mode": "cloud",
       "reason": "explicit:cloud",
-      "fingerprint": "f5bdb3a3d38792398f8d3fdb1f2869ac3c972e868f425347945f07c40e59a59c",
-      "artifact": "scapy-2.7.0-f5bdb3a3d387-windows-x64.zip"
+      "fingerprint": "6fd41130849dbc599e475d28e1ab1c10177bce4f29d826e24b00cba8bc42e905",
+      "artifact": "scapy-2.7.0-6fd41130849d-windows-x64.zip"
     },
     "scoop-configure": {
       "version": "1.0.0",

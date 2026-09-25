@@ -23,14 +23,17 @@ $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
 $PSNativeCommandUseErrorActionPreference = $false
 
-$CommonPath = Join-Path $PSScriptRoot "core/Common.ps1"
+$EnginePath = [IO.Path]::GetFullPath($PSCommandPath)
+$EngineDir = [IO.Path]::GetDirectoryName($EnginePath)
+
+$CommonPath = Join-Path $EngineDir "core/Common.ps1"
 if (-not (Test-Path -LiteralPath $CommonPath)) { throw "Common library not found: $CommonPath" }
 . $CommonPath
 
-$BuildersDir = Join-Path $PSScriptRoot "builders"
+$BuildersDir = Join-Path $EngineDir "builders"
 
 $EngineVersion = "4.0"
-$EngineSha256 = (Get-FileSha256 $PSCommandPath).ToLowerInvariant()
+$EngineSha256 = (Get-FileSha256 $EnginePath).ToLowerInvariant()
 $BuildEnvironmentPath = [IO.Path]::GetFullPath($BuildEnvironmentPath)
 if (-not (Test-Path -LiteralPath $BuildEnvironmentPath)) { throw "Build environment file not found: $BuildEnvironmentPath" }
 $BuildEnvironment = Get-Content -LiteralPath $BuildEnvironmentPath -Raw -Encoding utf8 | ConvertFrom-Json
@@ -240,6 +243,7 @@ function Invoke-BuildPhase {
   $levels = Get-DependencyLevels @($Plans | ForEach-Object { $_.recipe })
   $byName = @{}; foreach ($plan in $Plans) { $byName[$plan.name] = $plan }
   $stageRoot = [IO.Path]::GetFullPath($StageDir); $null = New-Item -ItemType Directory -Force -Path $stageRoot
+  $cacheRoot = [IO.Path]::GetFullPath($CacheDir)
   $activeBuildCount = [Math]::Max(1, @($Plans | Where-Object needs_build).Count)
   $requiredToolNames = @($Plans | Where-Object needs_build | ForEach-Object { @(Get-Prop $_.recipe "tool_dependencies" @()) } | Sort-Object -Unique)
   $commonPath = $CommonPath
@@ -254,7 +258,7 @@ function Invoke-BuildPhase {
     $results = @($levelPlans | ForEach-Object -Parallel {
       $plan = $_
       $stageRoot = $using:stageRoot
-      $cacheRoot = [IO.Path]::GetFullPath($using:CacheDir)
+      $cacheRoot = $using:cacheRoot
       $activeBuildCount = $using:activeBuildCount
       $requiredToolNames = $using:requiredToolNames
       $buildersDir = $using:buildersDir

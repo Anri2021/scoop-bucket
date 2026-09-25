@@ -18,8 +18,10 @@ foreach ($package in $built) {
   if (Test-Path -LiteralPath $target) { Remove-Item -LiteralPath $target -Recurse -Force }
   Expand-Archive -LiteralPath $archive.FullName -DestinationPath $target -Force
   $bin = [string]$package.recipe.bin
-  if ($bin -and -not (Test-Path -LiteralPath (Join-Path $target $bin))) {
-    throw "Expected executable '$bin' is missing from $($package.name)."
+  foreach ($b in @($package.recipe.bin)) {
+    if ($b -and -not (Test-Path -LiteralPath (Join-Path $target $b))) {
+      throw "Expected executable '$b' is missing from $($package.name)."
+    }
   }
   Remove-Item -LiteralPath $target -Recurse -Force -ErrorAction SilentlyContinue
 }

@@ -44,7 +44,7 @@ function Invoke-Checked {
   $output = & $File @Arguments 2>&1
   $output | Out-Host
   if ($LASTEXITCODE -ne 0) {
-    $details = ($output | Select-Object -Last 10) -join "`n"
+    $details = ($output | Select-Object -Last 50) -join "`n"
     throw "'$File' exited with code ${LASTEXITCODE}:`n$details"
   }
 }

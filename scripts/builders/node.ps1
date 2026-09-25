@@ -35,9 +35,9 @@ try {
   Push-Location $PackageDir
   try {
     if (Test-Path "pnpm-lock.yaml") {
-      Invoke-Checked "pnpm" @("install", "--prod", "--frozen-lockfile", "--config.node-linker=hoisted")
+      Invoke-Checked "pnpm" @("install", "--prod", "--prefer-offline", "--config.node-linker=hoisted")
     } else {
-      Invoke-Checked "npm" @("install", "--omit=dev", "--ignore-scripts", "--no-audit", "--no-fund")
+      Invoke-Checked "npm" @("install", "--omit=dev", "--ignore-scripts", "--no-audit", "--no-fund", "--prefer-offline")
     }
   } finally {
     Pop-Location

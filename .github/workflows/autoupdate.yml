@@ -39,6 +39,8 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 1
       - name: Test schema, dependency graph and generated manifests
         shell: pwsh
         run: ./tests/test-engine.ps1
@@ -122,6 +124,7 @@ jobs:
             ${{ (matrix.build_type == 'go' || matrix.build_type == 'caddy') && '~\go\pkg\mod' || '' }}
             ${{ (matrix.build_type == 'go' || matrix.build_type == 'caddy') && '~\AppData\Local\go-build' || '' }}
             ${{ matrix.build_type == 'dotnet' && '~/.nuget/packages' || '' }}
+            ${{ (matrix.build_type == 'c' || matrix.build_type == 'go') && 'C:\msys64\var\cache\pacman\pkg' || '' }}
           key: meta-v4-${{ runner.os }}-${{ matrix.package }}-${{ matrix.build_type }}-${{ matrix.fingerprint }}
           restore-keys: |
             meta-v4-${{ runner.os }}-${{ matrix.package }}-${{ matrix.build_type }}-

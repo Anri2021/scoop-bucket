@@ -43,12 +43,8 @@ try {
     Pop-Location
   }
 
-  $cmdTarget = ($entry -replace '/', '\')
-  $cmdLines = [Collections.Generic.List[string]]::new()
-  $cmdLines.Add("@echo off")
-  if (@(Get-Prop $Plan.recipe "persist" @()).Count -gt 0) { $cmdLines.Add('cd /d "%~dp0"') }
-  $cmdLines.Add(('node "%~dp0{0}" %*' -f $cmdTarget))
-  $cmdLines | Set-Content (Join-Path $PackageDir "$($Plan.name).cmd") -Encoding ascii
+  $pre = if (@(Get-Prop $Plan.recipe "persist" @()).Count -gt 0) { 'cd /d "%~dp0"' } else { "" }
+  Write-CmdShim -Path (Join-Path $PackageDir "$($Plan.name).cmd") -Command ('node "%~dp0{0}" %*' -f ($entry -replace '/', '\')) -PreCommand $pre
 } finally {
   Pop-Location
 }

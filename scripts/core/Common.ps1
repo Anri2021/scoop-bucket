@@ -76,6 +76,13 @@ function Get-BuilderSha256 {
   return (Get-TextSha256 "fallback-$BuildType")
 }
 
+function Get-PipelineSha256 {
+  param([string]$EnginePath, [string]$BuildEnvironmentPath)
+  $engineSha = (Get-FileSha256 $EnginePath).ToLowerInvariant()
+  $envSha = (Get-FileSha256 $BuildEnvironmentPath).ToLowerInvariant()
+  return (Get-TextSha256 "$engineSha`n$envSha")
+}
+
 function Write-CmdShim {
   param(
     [string]$Path,
@@ -92,3 +99,4 @@ function Write-CmdShim {
   }
   [System.IO.File]::WriteAllLines([System.IO.Path]::GetFullPath($Path), $lines, [System.Text.Encoding]::ASCII)
 }
+

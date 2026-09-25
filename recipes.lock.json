@@ -1,102 +1,102 @@
 {
   "engine_version": "4.0",
-  "recipes_sha256": "aa6f70aab55782bc2194166151b554cdeee8439eac50d73101f54cfbf2aad47e",
+  "recipes_sha256": "1228bd7db898adb2ba71e1f858bfb2466c2e3affa94c634929b2ad8ba40f815a",
   "packages": {
     "bun": {
       "version": "1.4.2",
       "tag": "bun-v1.4.2",
       "mode": "upstream",
       "reason": "explicit:upstream",
-      "fingerprint": "24727d55f5ef4c16d77a552f6ea97d73ade02b25c4f516160869ae3a74df46ba",
-      "artifact": "bun-1.4.2-24727d55f5ef-windows-x64.zip"
+      "fingerprint": "4bec6b95823e0eea9ea1796a23b7f9cda9c5e0f06c5da23d094a6070bc54ae19",
+      "artifact": "bun-1.4.2-4bec6b95823e-windows-x64.zip"
     },
     "caddy": {
       "version": "2.11.4",
       "tag": "v2.11.4",
       "mode": "cloud",
       "reason": "explicit:cloud",
-      "fingerprint": "ce3cd607f0caf3b33ab5c8664ca1d387625a1979ae398367c84d9b7932fe7ac3",
-      "artifact": "caddy-2.11.4-ce3cd607f0ca-windows-x64.zip"
+      "fingerprint": "e9b8410ab010ed29821e48008b98f1bcb8d6f09e7f5c6b7f74de1b277a298911",
+      "artifact": "caddy-2.11.4-e9b8410ab010-windows-x64.zip"
     },
     "ddns-dynu": {
       "version": "1.1.1",
       "tag": "v1.1.1",
       "mode": "upstream",
       "reason": "explicit:upstream",
-      "fingerprint": "6c1138fa2fcabda0740f88ea3e28671341a40b657fadf4e3174c08b0531e8276",
-      "artifact": "ddns-dynu-1.1.1-6c1138fa2fca-windows-x64.zip"
+      "fingerprint": "03db9a0b7e2409f1867d4e27acdd4f49e4b7fe36639e40731fff92c3816c270f",
+      "artifact": "ddns-dynu-1.1.1-03db9a0b7e24-windows-x64.zip"
     },
     "dex": {
       "version": "2.45.1",
       "tag": "v2.45.1",
       "mode": "cloud",
       "reason": "explicit:cloud",
-      "fingerprint": "8353378c66e2e2b82edbd5e4a3fdbd0517de81d298e004e14f9bc5150cbdab28",
-      "artifact": "dex-2.45.1-8353378c66e2-windows-x64.zip"
+      "fingerprint": "f4143454829296d6b5b0584f958e3c16394d8dc35ba5bcb5476ce77876620b40",
+      "artifact": "dex-2.45.1-f41434548292-windows-x64.zip"
     },
     "headplane": {
       "version": "0.7.1",
       "tag": "v0.7.1",
       "mode": "cloud",
       "reason": "explicit:cloud",
-      "fingerprint": "41734c28df2e30b9ad436a2f566acee52e374bb60048ece215cc35d278fc4301",
-      "artifact": "headplane-0.7.1-41734c28df2e-windows-x64.zip"
+      "fingerprint": "6a61f43243c419e33a7bb52a1056c60f462a5507c0f38abefcad5b43cbd85b7c",
+      "artifact": "headplane-0.7.1-6a61f43243c4-windows-x64.zip"
     },
     "headscale": {
       "version": "0.29.4",
       "tag": "v0.29.4",
       "mode": "cloud",
       "reason": "explicit:cloud",
-      "fingerprint": "0e1c1fa503224d48d9725d152b05bc6066a39af53058964029cbcefb1871e633",
-      "artifact": "headscale-0.29.4-0e1c1fa50322-windows-x64.zip"
+      "fingerprint": "e9c54a829a7d44196d62430ac70ed37be2e792c28f45b2397efdbc4121b9f94e",
+      "artifact": "headscale-0.29.4-e9c54a829a7d-windows-x64.zip"
     },
     "ipv6-advertiser": {
       "version": "1.0.4",
       "tag": "v1.0.4",
       "mode": "cloud",
       "reason": "explicit:cloud",
-      "fingerprint": "2b2f16131d68d54d3a53cc7b2fa6e8e4ac88bd9b01ea88c68ecb45d8765616d8",
-      "artifact": "ipv6-advertiser-1.0.4-2b2f16131d68-windows-x64.zip"
+      "fingerprint": "8a87ab0764e3233a7fbcfdf9e93fa5b1d2aba740bc2eee4b7616c1827ad46f2a",
+      "artifact": "ipv6-advertiser-1.0.4-8a87ab0764e3-windows-x64.zip"
     },
     "repomix": {
       "version": "1.18.1",
       "tag": "v1.18.1",
       "mode": "cloud",
       "reason": "explicit:cloud",
-      "fingerprint": "670c5b03cf62cdb8b52b4ff72f7e71f39bd7d3ca89077b32e64e77b32fe97580",
-      "artifact": "repomix-1.18.1-670c5b03cf62-windows-x64.zip"
+      "fingerprint": "1afe9b2a9c4839bc29a0cac2cdb81e209136ca025f7c6d91c53ba237088f4348",
+      "artifact": "repomix-1.18.1-1afe9b2a9c48-windows-x64.zip"
     },
     "scapy": {
       "version": "2.7.0",
       "tag": "v2.7.0",
       "mode": "cloud",
       "reason": "explicit:cloud",
-      "fingerprint": "99d1877c4a4a2cbbedaaf6671a2aa65c77bbc3b614cb26538038b51b132956b5",
-      "artifact": "scapy-2.7.0-99d1877c4a4a-windows-x64.zip"
+      "fingerprint": "f5bdb3a3d38792398f8d3fdb1f2869ac3c972e868f425347945f07c40e59a59c",
+      "artifact": "scapy-2.7.0-f5bdb3a3d387-windows-x64.zip"
     },
     "scoop-configure": {
       "version": "1.0.0",
       "tag": "v1.0.0",
       "mode": "upstream",
       "reason": "explicit:upstream",
-      "fingerprint": "0dfc94b6f121b9173b5c3fc98de86e3d570426a9781d84c41ae5abdae2fcd498",
-      "artifact": "scoop-configure-1.0.0-0dfc94b6f121-windows-x64.zip"
+      "fingerprint": "5beb2a916ab6e3fe074e94e8b71c93493724b31bc59ff52c6a4b8bb5fe629b99",
+      "artifact": "scoop-configure-1.0.0-5beb2a916ab6-windows-x64.zip"
     },
     "technitium-dns": {
       "version": "15.5.0",
       "tag": "v15.5.0",
       "mode": "cloud",
       "reason": "explicit:cloud",
-      "fingerprint": "2084ef7b20f1591bbf5ebe0c04fdd1d97e262c9515c4c3dc76eee1bbf924fd32",
-      "artifact": "technitium-dns-15.5.0-2084ef7b20f1-windows-x64.zip"
+      "fingerprint": "544636c6f503e2b72e7170b3961a14291966acab95be69451d8cfc43db5078d2",
+      "artifact": "technitium-dns-15.5.0-544636c6f503-windows-x64.zip"
     },
     "xcaddy": {
       "version": "0.4.7",
       "tag": "v0.4.7",
       "mode": "upstream",
       "reason": "explicit:upstream",
-      "fingerprint": "ac42fe8825e11de245dcb5e067446c9afda8cbcd645bfa8268bc41fb01828be2",
-      "artifact": "xcaddy-0.4.7-ac42fe8825e1-windows-x64.zip"
+      "fingerprint": "684b532d5a0af19a3c272941953a33251f13db335da89536753c7f8eb4b2008d",
+      "artifact": "xcaddy-0.4.7-684b532d5a0a-windows-x64.zip"
     }
   }
 }

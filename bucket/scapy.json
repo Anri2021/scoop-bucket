@@ -3,8 +3,8 @@
   "description": "Interactive packet manipulation program and library",
   "homepage": "https://scapy.net",
   "license": "GPL-2.0-only",
-  "url": "https://github.com/Anri2021/scoop-bucket/releases/download/scapy-v2.7.0/scapy-2.7.0-99d1877c4a4a-windows-x64.zip",
-  "hash": "b398ca2a09037168e8844b71845b2eef4fc6db51d64b4b015a93ca0431ae90a0",
+  "url": "https://github.com/Anri2021/scoop-bucket/releases/download/scapy-v2.7.0/scapy-2.7.0-f5bdb3a3d387-windows-x64.zip",
+  "hash": "7a6b3a2dabf1b6f37447882d0ef416dfda6cbbf7e052c079c3682910e95d0541",
   "bin": "scapy.cmd",
   "depends": "python"
 }

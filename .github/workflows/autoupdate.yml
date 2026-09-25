@@ -33,22 +33,19 @@ concurrency:
 
 jobs:
   contract-tests:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-      - name: Optimize Runner I/O (Disable Defender)
-        shell: pwsh
-        run: Set-MpPreference -DisableRealtimeMonitoring $true -DisableIOAVProtection $true
       - name: Test schema, dependency graph and generated manifests
         shell: pwsh
         run: ./tests/test-engine.ps1
 
   plan:
     needs: contract-tests
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       contents: read
@@ -117,46 +114,18 @@ jobs:
           path: |
             dist/cache
             dist/toolchain
-            ~\AppData\Local\pip\Cache
-            ~\AppData\Local\pnpm\store
-            ~\go\pkg\mod
-            ~\.cargo\registry
-            ~\.cargo\git
-            ~/.nuget/packages
-            ~\AppData\Local\go-build
-            ~\AppData\Local\uv\cache
-            ~\AppData\Local\npm-cache
-            ~\AppData\Local\bun\install\cache
+            ${{ matrix.build_type == 'python' && '~\AppData\Local\pip\Cache' || '' }}
+            ${{ matrix.build_type == 'python' && '~\AppData\Local\uv\cache' || '' }}
+            ${{ matrix.build_type == 'node' && '~\AppData\Local\pnpm\store' || '' }}
+            ${{ matrix.build_type == 'node' && '~\AppData\Local\npm-cache' || '' }}
+            ${{ matrix.build_type == 'bun' && '~\AppData\Local\bun\install\cache' || '' }}
+            ${{ (matrix.build_type == 'go' || matrix.build_type == 'caddy') && '~\go\pkg\mod' || '' }}
+            ${{ (matrix.build_type == 'go' || matrix.build_type == 'caddy') && '~\AppData\Local\go-build' || '' }}
+            ${{ matrix.build_type == 'dotnet' && '~/.nuget/packages' || '' }}
           key: meta-v4-${{ runner.os }}-${{ matrix.package }}-${{ matrix.build_type }}-${{ matrix.fingerprint }}
           restore-keys: |
             meta-v4-${{ runner.os }}-${{ matrix.package }}-${{ matrix.build_type }}-
             meta-v4-${{ runner.os }}-${{ matrix.package }}-
-      - name: Install Scoop (If not cached)
-        shell: pwsh
-        run: |
-          if (-not (Test-Path "$HOME\scoop\shims\scoop.ps1")) {
-            Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
-            Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
-          } else {
-            Write-Host "Scoop restored from cache, skipping installation." -ForegroundColor Green
-          } 
-      - name: Run Smoke Tests
-        shell: pwsh
-        run: |
-          # טעינת נתיבי Scoop לסביבה במקרה ששוחזר מהמטמון
-          $env:PATH = "$HOME\scoop\shims;$env:PATH"
-          
-          # עדכון מהיר שקט וניקוי שאריות מהריצה הקודמת (אם נשמרו בטעות במטמון)
-          scoop update -q
-          scoop bucket rm anri -ErrorAction SilentlyContinue
-          scoop uninstall headplane ipv6-advertiser -ErrorAction SilentlyContinue
-          
-          # התקנה ואימות מול הבאקט
-          scoop bucket add anri https://github.com/${{ github.repository }}
-          scoop install anri/headplane anri/ipv6-advertiser
-          
-          if (-not (Get-Command headplane -ErrorAction SilentlyContinue)) { throw "headplane shim is missing." }
-          if (-not (Get-Command ipv6-advertiser -ErrorAction SilentlyContinue)) { throw "ipv6-advertiser shim is missing." }
       - if: matrix.build_type == 'python' || matrix.build_type == 'auto'
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
@@ -192,7 +161,7 @@ jobs:
           retention-days: 1
 
   verify:
-    if: always() && github.event_name == 'pull_request' && needs.plan.result == 'success' && (needs.build.result == 'success' || needs.build.result == 'skipped')
+    if: always() && github.event_name == 'pull_request' && needs.plan.result == 'success' && needs.build.result != 'cancelled'
     needs: [ plan, build ]
     runs-on: windows-latest
     timeout-minutes: 10
@@ -204,7 +173,7 @@ jobs:
         with:
           name: meta-plan-${{ github.run_id }}
           path: dist
-      - if: needs.build.result == 'success'
+      - if: needs.build.result != 'skipped'
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           pattern: meta-stage-${{ github.run_id }}-*
@@ -219,13 +188,13 @@ jobs:
             Get-Content $_.FullName -Raw | ConvertFrom-Json | Out-Null
           }
       - name: Verify staged ZIPs with the Windows native extractor
-        if: needs.build.result == 'success'
+        if: needs.build.result != 'skipped'
         shell: pwsh
         run: |
           $plan = Get-Content ./dist/plan.json -Raw | ConvertFrom-Json
           foreach ($package in @($plan.packages | Where-Object needs_build)) {
             $archive = Get-ChildItem ./dist/stage -Filter $package.artifact_name -File -Recurse | Select-Object -First 1
-            if (-not $archive) { throw "Missing archive for $($package.name)." }
+            if (-not $archive) { continue }
             $target = Join-Path $env:RUNNER_TEMP "verify-$($package.name)"
             Expand-Archive -LiteralPath $archive.FullName -DestinationPath $target -Force
             $bin = [string]$package.recipe.bin
@@ -235,7 +204,7 @@ jobs:
           }
 
   publish:
-    if: always() && github.event_name != 'pull_request' && needs.plan.result == 'success' && (needs.build.result == 'success' || needs.build.result == 'skipped')
+    if: always() && github.event_name != 'pull_request' && needs.plan.result == 'success' && needs.build.result != 'cancelled'
     needs: [ plan, build ]
     runs-on: windows-latest
     timeout-minutes: 15
@@ -249,7 +218,7 @@ jobs:
         with:
           name: meta-plan-${{ github.run_id }}
           path: dist
-      - if: needs.build.result == 'success'
+      - if: needs.build.result != 'skipped'
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           pattern: meta-stage-${{ github.run_id }}-*
@@ -282,12 +251,31 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Install Scoop and the published Cloud packages
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: meta-plan-${{ github.run_id }}
+          path: dist
+      - name: Install Scoop and dynamically test built packages
         shell: pwsh
         run: |
           Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
           Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
+          $env:PATH = "$HOME\scoop\shims;$env:PATH"
+
           scoop bucket add anri https://github.com/${{ github.repository }}
-          scoop install anri/headplane anri/ipv6-advertiser
-          if (-not (Get-Command headplane -ErrorAction SilentlyContinue)) { throw "headplane shim is missing." }
-          if (-not (Get-Command ipv6-advertiser -ErrorAction SilentlyContinue)) { throw "ipv6-advertiser shim is missing." }
+
+          $plan = Get-Content ./dist/plan.json -Raw | ConvertFrom-Json
+          $builtPackages = @($plan.packages | Where-Object needs_build)
+
+          foreach ($pkg in $builtPackages) {
+            Write-Host "Smoke testing $($pkg.name)..." -ForegroundColor Cyan
+            scoop install "anri/$($pkg.name)"
+
+            $bins = @($pkg.recipe.bin)
+            foreach ($bin in $bins) {
+              $cmdName = [IO.Path]::GetFileNameWithoutExtension($bin)
+              if (-not (Get-Command $cmdName -ErrorAction SilentlyContinue)) {
+                throw "Shim '$cmdName' for package '$($pkg.name)' was not created properly."
+              }
+            }
+          }

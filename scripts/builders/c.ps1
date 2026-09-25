@@ -15,7 +15,7 @@ make -j$(nproc)
 Set-Content (Join-Path $SourceRoot "build.sh") -Value $buildScript -Encoding ascii
 Invoke-Checked $bash @("-lc", ("cd '{0}' && ./build.sh" -f ($SourceRoot -replace '\\', '/')))
 
-Get-ChildItem (Join-Path $SourceRoot "src/util/.libs/*.exe") \vert{} Copy-Item -Destination $PackageDir -Force
+Get-ChildItem (Join-Path $SourceRoot "src/util/.libs/*.exe") | Copy-Item -Destination $PackageDir -Force
 Get-ChildItem (Join-Path $SourceRoot "src/libmdb/.libs/*.dll") | Copy-Item -Destination $PackageDir -Force$mingwDlls = @("libglib-2.0-0.dll", "libintl-8.dll", "libiconv-2.dll", "libpcre2-8-0.dll", "libwinpthread-1.dll")
 foreach ($dll in $mingwDlls) {$dllPath = "C:\msys64\mingw64\bin\$dll"
   if (Test-Path $dllPath) { Copy-Item $dllPath -Destination$PackageDir -Force }

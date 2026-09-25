@@ -172,7 +172,7 @@ jobs:
         with:
           go-version: ${{ matrix.go }}
           cache: true
-      - if: matrix.build_type == 'go' || matrix.build_type == 'auto'
+      - if: matrix.build_type == 'go' || matrix.build_type == 'c' || matrix.build_type == 'auto'
         name: Add MinGW to PATH for CGO
         shell: pwsh
         run: |

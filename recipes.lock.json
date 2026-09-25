@@ -58,6 +58,14 @@
       "fingerprint": "8a87ab0764e3233a7fbcfdf9e93fa5b1d2aba740bc2eee4b7616c1827ad46f2a",
       "artifact": "ipv6-advertiser-1.0.4-8a87ab0764e3-windows-x64.zip"
     },
+    "mdbtools": {
+      "version": "1.0.1",
+      "tag": "v1.0.1",
+      "mode": "cloud",
+      "reason": "explicit:cloud",
+      "fingerprint": "e3e608ea6e7cff6a5d94de1fb323a8a71da97a8d9f0d0622dd5058a86a5fa97d",
+      "artifact": "mdbtools-1.0.1-e3e608ea6e7c-windows-x64.zip"
+    },
     "repomix": {
       "version": "1.18.1",
       "tag": "v1.18.1",

@@ -8,9 +8,10 @@ set -e
 export PATH="/mingw64/bin:/usr/bin:$PATH"
 export ACLOCAL_PATH="/mingw64/share/aclocal:/usr/share/aclocal"
 export PKG_CONFIG_PATH="/mingw64/lib/pkgconfig"
+export CFLAGS="-Dlocale_t=_locale_t -O2"
 pacman -S --noconfirm --needed mingw-w64-x86_64-gcc mingw-w64-x86_64-glib2 mingw-w64-x86_64-pkgconf pkgconf autoconf automake libtool bison flex make
 autoreconf -fi -I /mingw64/share/aclocal
-./configure --prefix=/mingw64 --disable-man
+./configure --prefix=/mingw64 --disable-man --disable-glibtest --disable-rpath
 make -j$(nproc)
 '@ -replace "`r`n", "`n"
 

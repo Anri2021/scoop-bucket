@@ -1,6 +1,6 @@
 {
   "engine_version": "4.0",
-  "recipes_sha256": "5338f5aae6a5cf4eb9e6628d9b4955d894b2ae090c0def020504d5626197044c",
+  "recipes_sha256": "3af842afee05f0ac020027fc824f0f49e054bae89a1593a29b861de923b26e36",
   "packages": {
     "bun": {
       "version": "1.4.2",
@@ -65,6 +65,14 @@
       "reason": "explicit:cloud",
       "fingerprint": "e3e608ea6e7cff6a5d94de1fb323a8a71da97a8d9f0d0622dd5058a86a5fa97d",
       "artifact": "mdbtools-1.0.1-e3e608ea6e7c-windows-x64.zip"
+    },
+    "ps-regex-fixer": {
+      "version": "1.0.1",
+      "tag": "v1.0.1",
+      "mode": "upstream",
+      "reason": "explicit:upstream",
+      "fingerprint": "765a3dfd0c37fc7f16456c3e06157cec7b05f46f453a43950483e611e1494a25",
+      "artifact": "ps-regex-fixer-1.0.1-765a3dfd0c37-windows-x64.zip"
     },
     "repomix": {
       "version": "1.18.1",

@@ -91,12 +91,12 @@
       "artifact": "scoop-configure-1.0.0-5beb2a916ab6-windows-x64.zip"
     },
     "technitium-dns": {
-      "version": "15.5.0",
-      "tag": "v15.5.0",
+      "version": "15.5.1",
+      "tag": "v15.5.1",
       "mode": "cloud",
       "reason": "explicit:cloud",
-      "fingerprint": "a7d51a2c0727dd20d4dbee91eb192d52ae7fb9995a68bdf43d4e10f484f74c15",
-      "artifact": "technitium-dns-15.5.0-a7d51a2c0727-windows-x64.zip"
+      "fingerprint": "39f9d073701fa97089e827040ea09bd5a74b39a6fcedb10f9203180f25007994",
+      "artifact": "technitium-dns-15.5.1-39f9d073701f-windows-x64.zip"
     },
     "xcaddy": {
       "version": "0.4.7",

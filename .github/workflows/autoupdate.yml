@@ -1,0 +1,253 @@
+name: Meta-Bucket Auto Update
+
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        description: "Package name to build (leave empty for all)"
+        required: false
+        type: string
+        default: ""
+  push:
+    branches: [ main ]
+    paths:
+      - "recipes.json"
+      - "build-environment.json"
+      - "scripts/**"
+      - "schemas/**"
+      - ".github/workflows/autoupdate.yml"
+  schedule:
+    - cron: "0 * * * *"
+  pull_request:
+    paths:
+      - "recipes.json"
+      - "build-environment.json"
+      - "scripts/**"
+      - "schemas/**"
+      - "tests/**"
+      - ".github/workflows/autoupdate.yml"
+
+concurrency:
+  group: meta-bucket-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contract-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 1
+      - name: Test schema, dependency graph and generated manifests
+        shell: pwsh
+        run: ./tests/test-engine.ps1
+
+  plan:
+    needs: contract-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      has_build: ${{ steps.matrix.outputs.has_build }}
+      needs_python: ${{ steps.matrix.outputs.needs_python }}
+      needs_node: ${{ steps.matrix.outputs.needs_node }}
+      needs_go: ${{ steps.matrix.outputs.needs_go }}
+      build_matrix: ${{ steps.matrix.outputs.build_matrix }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Resolve versions and deterministic decisions
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: ./scripts/generate-bucket.ps1 -Phase Plan -PackageName '${{ inputs.package }}' -RecipesPath ./recipes.json -PlanPath ./dist/plan.json
+      - name: Export required builders
+        id: matrix
+        shell: pwsh
+        run: |
+          $plan = Get-Content ./dist/plan.json -Raw | ConvertFrom-Json
+          $builds = @($plan.packages | Where-Object needs_build)
+          $types = @($builds | ForEach-Object { $_.recipe.build_type })
+          "has_build=$($builds.Count -gt 0)".ToLowerInvariant() >> $env:GITHUB_OUTPUT
+          "needs_python=$($types -contains 'python' -or $types -contains 'auto')".ToLowerInvariant() >> $env:GITHUB_OUTPUT
+          "needs_node=$($types -contains 'node' -or $types -contains 'auto')".ToLowerInvariant() >> $env:GITHUB_OUTPUT
+          "needs_go=$($types -contains 'go' -or $types -contains 'caddy' -or $types -contains 'auto')".ToLowerInvariant() >> $env:GITHUB_OUTPUT
+          $include = @($builds | ForEach-Object {
+            [ordered]@{
+              package = $_.name; build_type = $_.recipe.build_type; fingerprint = $_.fingerprint.Substring(0, 16)
+              runner = $plan.build_environment.runner; python = $plan.build_environment.python
+              node = $plan.build_environment.node; go = $plan.build_environment.go; dotnet = $plan.build_environment.dotnet
+            }
+          })
+          "build_matrix=$(@{ include = $include } | ConvertTo-Json -Depth 5 -Compress)" >> $env:GITHUB_OUTPUT
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: meta-plan-${{ github.run_id }}
+          path: dist/plan.json
+          if-no-files-found: error
+          retention-days: 1
+
+  build:
+    if: needs.plan.outputs.has_build == 'true'
+    needs: plan
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix: ${{ fromJson(needs.plan.outputs.build_matrix) }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Optimize Runner I/O (Disable Defender)
+        shell: pwsh
+        run: Set-MpPreference -DisableRealtimeMonitoring $true -DisableIOAVProtection $true -ErrorAction SilentlyContinue
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: meta-plan-${{ github.run_id }}
+          path: dist
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: |
+            dist/cache
+            dist/toolchain
+            ${{ matrix.build_type == 'python' && '~\AppData\Local\pip\Cache' || '' }}
+            ${{ matrix.build_type == 'python' && '~\AppData\Local\uv\cache' || '' }}
+            ${{ matrix.build_type == 'node' && '~\AppData\Local\pnpm\store' || '' }}
+            ${{ matrix.build_type == 'node' && '~\AppData\Local\npm-cache' || '' }}
+            ${{ matrix.build_type == 'bun' && '~\AppData\Local\bun\install\cache' || '' }}
+            ${{ (matrix.build_type == 'go' || matrix.build_type == 'caddy') && '~\go\pkg\mod' || '' }}
+            ${{ (matrix.build_type == 'go' || matrix.build_type == 'caddy') && '~\AppData\Local\go-build' || '' }}
+            ${{ matrix.build_type == 'dotnet' && '~/.nuget/packages' || '' }}
+            ${{ (matrix.build_type == 'c' || matrix.build_type == 'go') && 'C:\msys64\var\cache\pacman\pkg' || '' }}
+          key: meta-v4-${{ runner.os }}-${{ matrix.package }}-${{ matrix.build_type }}-${{ matrix.fingerprint }}
+          restore-keys: |
+            meta-v4-${{ runner.os }}-${{ matrix.package }}-${{ matrix.build_type }}-
+            meta-v4-${{ runner.os }}-${{ matrix.package }}-
+      - if: matrix.build_type == 'python' || matrix.build_type == 'auto'
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: ${{ matrix.python }}
+      - if: matrix.build_type == 'python' || matrix.build_type == 'auto'
+        uses: astral-sh/setup-uv@v5
+      - if: matrix.build_type == 'node' || matrix.build_type == 'bun' || matrix.build_type == 'auto'
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: ${{ matrix.node }}
+      - if: matrix.build_type == 'go' || matrix.build_type == 'caddy' || matrix.build_type == 'auto'
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version: ${{ matrix.go }}
+          cache: true
+      - if: matrix.build_type == 'go' || matrix.build_type == 'c' || matrix.build_type == 'auto'
+        name: Add MinGW to PATH for CGO
+        shell: pwsh
+        run: |
+          "C:\msys64\mingw64\bin" >> $env:GITHUB_PATH
+      - if: matrix.build_type == 'dotnet' || matrix.build_type == 'auto'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ matrix.dotnet }}
+      - name: Build untrusted sources without a write token
+        shell: pwsh
+        run: ./scripts/generate-bucket.ps1 -Phase Build -PackageName '${{ matrix.package }}' -RecipesPath ./recipes.json -PlanPath ./dist/plan.json -StageDir ./dist/stage -CacheDir ./dist/cache
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: meta-stage-${{ github.run_id }}-${{ matrix.package }}
+          path: dist/stage
+          if-no-files-found: error
+          retention-days: 1
+
+  verify:
+    if: always() && github.event_name == 'pull_request' && needs.plan.result == 'success' && needs.build.result != 'cancelled'
+    needs: [ plan, build ]
+    runs-on: windows-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: meta-plan-${{ github.run_id }}
+          path: dist
+      - if: needs.build.result != 'skipped'
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          pattern: meta-stage-${{ github.run_id }}-*
+          path: dist/stage
+      - name: Generate manifests without publishing
+        shell: pwsh
+        run: ./scripts/generate-bucket.ps1 -Phase Finalize -PackageName '${{ inputs.package }}' -NoPublish -RecipesPath ./recipes.json -PlanPath ./dist/plan.json -StageDir ./dist/stage -BucketDir ./bucket
+      - name: Validate generated JSON
+        shell: pwsh
+        run: |
+          Get-ChildItem ./bucket/*.json | ForEach-Object {
+            Get-Content $_.FullName -Raw | ConvertFrom-Json | Out-Null
+          }
+      - name: Verify staged ZIPs with the Windows native extractor
+        if: needs.build.result != 'skipped'
+        shell: pwsh
+        run: ./tests/verify-artifacts.ps1 -PlanPath ./dist/plan.json -StageDir ./dist/stage
+
+  publish:
+    if: always() && github.event_name != 'pull_request' && needs.plan.result == 'success' && needs.build.result != 'cancelled'
+    needs: [ plan, build ]
+    runs-on: windows-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 1
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: meta-plan-${{ github.run_id }}
+          path: dist
+      - if: needs.build.result != 'skipped'
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          pattern: meta-stage-${{ github.run_id }}-*
+          path: dist/stage
+      - name: Publish trusted artifacts and generate manifests
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: ./scripts/generate-bucket.ps1 -Phase Finalize -PackageName '${{ inputs.package }}' -RecipesPath ./recipes.json -PlanPath ./dist/plan.json -StageDir ./dist/stage -BucketDir ./bucket
+      - name: Commit only deterministic changes
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add --all bucket recipes.lock.json
+          if (git diff --staged --quiet) {
+            Write-Host "No deterministic changes."
+            exit 0
+          }
+          git commit -m "chore(bucket): synchronize deterministic manifests"
+          git pull --rebase origin main
+          git push origin HEAD:main
+
+  install-smoke:
+    if: always() && github.event_name != 'pull_request' && needs.publish.result == 'success' && needs.plan.outputs.has_build == 'true'
+    needs: [plan, publish]
+    runs-on: windows-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: meta-plan-${{ github.run_id }}
+          path: dist
+      - name: Install Scoop and dynamically test built packages
+        shell: pwsh
+        run: ./tests/smoke-test.ps1 -PlanPath ./dist/plan.json

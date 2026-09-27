@@ -4,7 +4,7 @@
   "homepage": "https://scapy.net",
   "license": "GPL-2.0-only",
   "url": "https://github.com/Anri2021/scoop-bucket/releases/download/scapy-v2.7.0/scapy-2.7.0-5ffacf141d70-windows-x64.zip",
-  "hash": "43057969587e43f42ca36b8974488e843190e1a4d62f42c5ae242191fb4e18f3",
+  "hash": "76fb4ab209149efe08e25db0316aecfe972e774be6e4dea39d7763d748a7163a",
   "bin": "scapy.cmd",
   "depends": "python"
 }

@@ -4,7 +4,7 @@
   "homepage": "https://technitium.com/dns/",
   "license": "GPL-3.0-or-later",
   "url": "https://github.com/Anri2021/scoop-bucket/releases/download/technitium-dns-v15.5.1/technitium-dns-15.5.1-39f9d073701f-windows-x64.zip",
-  "hash": "f954b05959994125371c2b2ef016d1284698e280dd950ef4aca8ac593aeb5b51",
+  "hash": "af228dcd5fdd0137844c76e740416b07064d49b8a64dfcce311f18cca90eaf0d",
   "bin": "DnsServerApp.exe",
   "persist": "config"
 }

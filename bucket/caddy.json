@@ -3,8 +3,8 @@
   "description": "Fast, multi-platform web server with automatic HTTPS and Dynu DNS plugin",
   "homepage": "https://caddyserver.com",
   "license": "Apache-2.0",
-  "url": "https://github.com/Anri2021/scoop-bucket/releases/download/caddy-v2.11.4/caddy-2.11.4-e9b8410ab010-windows-x64.zip",
-  "hash": "f8cb55ac52243ecfe95d128fe35b4027e1d3aaa47d84e6e630d94e727ce907b1",
+  "url": "https://github.com/Anri2021/scoop-bucket/releases/download/caddy-v2.11.4/caddy-2.11.4-b19048f3c1cc-windows-x64.zip",
+  "hash": "2b1987f2f1c3d12692b8f48007c2800c1d46d05a3bfdca14136ab861d9cbd9cd",
   "bin": "caddy.exe",
   "depends": "xcaddy",
   "persist": "caddy.conf"

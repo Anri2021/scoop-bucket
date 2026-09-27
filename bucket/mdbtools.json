@@ -4,7 +4,7 @@
   "homepage": "https://github.com/mdbtools/mdbtools",
   "license": "LGPL-2.1-or-later",
   "url": "https://github.com/Anri2021/scoop-bucket/releases/download/mdbtools-v1.0.1/mdbtools-1.0.1-e3e608ea6e7c-windows-x64.zip",
-  "hash": "5ce9be0e8f417b86f19bc191977dbf66190d47901298515554979cc32e3a6aa4",
+  "hash": "ce55f38c4109b1aabd0f2d3224e25394ccb013ea68c4d0565c8f486b3d36d85d",
   "bin": [
     "mdb-export.exe",
     "mdb-tables.exe",

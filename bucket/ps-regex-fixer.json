@@ -1,16 +1,9 @@
 {
-  "version": "1.0.7",
+  "version": "1.0.1",
   "description": "PS Regex Fixer utility",
   "homepage": "https://github.com/Anri2021/ps-regex-fixer",
   "license": "MIT",
-  "url": [
-    "https://github.com/Anri2021/ps-regex-fixer/releases/download/v1.0.7/ps-regex-fixer.ps1",
-    "https://github.com/Anri2021/ps-regex-fixer/releases/download/v1.0.7/ps-regex-fixer-basic.ps1"
-  ],
-  "hash": [
-    "b3ce2ff6a6b6999f0360da1c3031efe1e255838cb365e92fbb0c2a01e8c118ff",
-    "72b6312539e1c56d60a286b3bf046a6063343ac93e23cef8490ce29e4815cf3e"
-  ],
-  "bin": "ps-regex-fixer.ps1",
-  "persist": ""
+  "url": "https://github.com/Anri2021/ps-regex-fixer/releases/download/v1.0.1/ps-regex-fixer.ps1",
+  "hash": "cc5e22beea1eda79762854ccf43256b78bcd49b2bf4bf0adca840b7bd3b3c1fc",
+  "bin": "ps-regex-fixer.ps1"
 }

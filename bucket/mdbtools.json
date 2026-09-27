@@ -1,0 +1,15 @@
+{
+  "version": "1.0.1",
+  "description": "Utilities to view and export data from Microsoft Access databases",
+  "homepage": "https://github.com/mdbtools/mdbtools",
+  "license": "LGPL-2.1-or-later",
+  "url": "https://github.com/Anri2021/scoop-bucket/releases/download/mdbtools-v1.0.1/mdbtools-1.0.1-e3e608ea6e7c-windows-x64.zip",
+  "hash": "5ce9be0e8f417b86f19bc191977dbf66190d47901298515554979cc32e3a6aa4",
+  "bin": [
+    "mdb-export.exe",
+    "mdb-tables.exe",
+    "mdb-schema.exe",
+    "mdb-sql.exe",
+    "mdb-json.exe"
+  ]
+}

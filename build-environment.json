@@ -1,0 +1,9 @@
+{
+  "runner": "windows-latest",
+  "python": "3.13",
+  "node": "24",
+  "go": "stable",
+  "dotnet": "9.0.x",
+  "archive": "zip-deflate",
+  "archive_level": 5
+}

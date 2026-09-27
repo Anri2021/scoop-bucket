@@ -1,0 +1,9 @@
+{
+  "version": "0.4.7",
+  "description": "Build Caddy with plugins",
+  "homepage": "https://github.com/caddyserver/xcaddy",
+  "license": "Apache-2.0",
+  "url": "https://github.com/caddyserver/xcaddy/releases/download/v0.4.7/xcaddy_0.4.7_windows_amd64.zip",
+  "hash": "9d9f078975f81e3249ffc71f2b919612098429a040d6f600ce1f4e48ba733c2d",
+  "bin": "xcaddy.exe"
+}

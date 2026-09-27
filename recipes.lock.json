@@ -67,12 +67,12 @@
       "artifact": "mdbtools-1.0.1-e3e608ea6e7c-windows-x64.zip"
     },
     "ps-regex-fixer": {
-      "version": "1.0.1",
-      "tag": "v1.0.1",
+      "version": "1.1.0",
+      "tag": "v1.1.0",
       "mode": "upstream",
       "reason": "explicit:upstream",
-      "fingerprint": "1b659d3fdcce9d640a7b40c33934d61bb8f4c0e8489ea80812a93542a62d1e8d",
-      "artifact": "ps-regex-fixer-1.0.1-1b659d3fdcce-windows-x64.zip"
+      "fingerprint": "b924ecaa007c14655545ee04ddac27212b4c27ec59a587e4848ff1d15dccfe91",
+      "artifact": "ps-regex-fixer-1.1.0-b924ecaa007c-windows-x64.zip"
     },
     "repomix": {
       "version": "1.18.1",

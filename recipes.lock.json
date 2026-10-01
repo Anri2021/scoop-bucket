@@ -11,12 +11,12 @@
       "artifact": "bun-1.4.2-4bec6b95823e-windows-x64.zip"
     },
     "caddy": {
-      "version": "2.11.4",
-      "tag": "v2.11.4",
+      "version": "2.11.6",
+      "tag": "v2.11.6",
       "mode": "cloud",
       "reason": "explicit:cloud",
-      "fingerprint": "b19048f3c1ccc7ff6deff51f093ece016b5506048d66d4f664c1af91dfe2b00f",
-      "artifact": "caddy-2.11.4-b19048f3c1cc-windows-x64.zip"
+      "fingerprint": "838d22bdd9155ab86ce37c51cc374c9042f08a350ce9f7347dd5ab18fc4dd85c",
+      "artifact": "caddy-2.11.6-838d22bdd915-windows-x64.zip"
     },
     "ddns-dynu": {
       "version": "1.1.4",

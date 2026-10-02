@@ -83,12 +83,12 @@
       "artifact": "repomix-1.18.1-1943efc26988-windows-x64.zip"
     },
     "scapy": {
-      "version": "2.7.0",
-      "tag": "v2.7.0",
+      "version": "2.8.0",
+      "tag": "v2.8.0",
       "mode": "cloud",
       "reason": "explicit:cloud",
-      "fingerprint": "5ffacf141d70da8bbe4372239b211ad2c7183df0476e3ad4472a96928288a501",
-      "artifact": "scapy-2.7.0-5ffacf141d70-windows-x64.zip"
+      "fingerprint": "d1af7e58ad474441c8f430b866900cca60310bfdc80e102f75d5f4dc79559141",
+      "artifact": "scapy-2.8.0-d1af7e58ad47-windows-x64.zip"
     },
     "scoop-configure": {
       "version": "1.0.0",

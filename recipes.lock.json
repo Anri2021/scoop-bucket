@@ -27,12 +27,12 @@
       "artifact": "ddns-dynu-1.1.4-77c9da2e8035-windows-x64.zip"
     },
     "dex": {
-      "version": "2.45.1",
-      "tag": "v2.45.1",
+      "version": "2.46.0",
+      "tag": "v2.46.0",
       "mode": "cloud",
       "reason": "explicit:cloud",
-      "fingerprint": "841fb22c7c043029d9e799cf7af0b3fb8dde95c666cbd3921da5ef138551e4aa",
-      "artifact": "dex-2.45.1-841fb22c7c04-windows-x64.zip"
+      "fingerprint": "2865b0248a56eb6b21fa9c912300a6daf886b8bb1bea80e46ddff51147f12dcf",
+      "artifact": "dex-2.46.0-2865b0248a56-windows-x64.zip"
     },
     "headplane": {
       "version": "0.7.1",

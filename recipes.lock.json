@@ -3,12 +3,12 @@
   "recipes_sha256": "26659fe3ef82d3054ec6d4fa7385b26165b7e784278bce892efe56a585ceb9e3",
   "packages": {
     "bun": {
-      "version": "1.4.2",
-      "tag": "bun-v1.4.2",
+      "version": "1.4.3",
+      "tag": "bun-v1.4.3",
       "mode": "upstream",
       "reason": "explicit:upstream",
-      "fingerprint": "4bec6b95823e0eea9ea1796a23b7f9cda9c5e0f06c5da23d094a6070bc54ae19",
-      "artifact": "bun-1.4.2-4bec6b95823e-windows-x64.zip"
+      "fingerprint": "86579ca0b6b7bb16ef594e409d059d783843b9b70bfb529db4e10d345ac27dab",
+      "artifact": "bun-1.4.3-86579ca0b6b7-windows-x64.zip"
     },
     "caddy": {
       "version": "2.11.7",

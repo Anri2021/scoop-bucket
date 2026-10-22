@@ -35,12 +35,12 @@
       "artifact": "dex-2.46.1-00a149a2e4c1-windows-x64.zip"
     },
     "headplane": {
-      "version": "0.8.1",
-      "tag": "v0.8.1",
+      "version": "0.8.2",
+      "tag": "v0.8.2",
       "mode": "cloud",
       "reason": "explicit:cloud",
-      "fingerprint": "61ebcc474e57f7da41bc450dad46b335b6a76538e26509aaae76c33934864183",
-      "artifact": "headplane-0.8.1-61ebcc474e57-windows-x64.zip"
+      "fingerprint": "9508aa46e025fda8714dba5c5ac0cb0566839c23d08b67ba871bc93b3ad23d39",
+      "artifact": "headplane-0.8.2-9508aa46e025-windows-x64.zip"
     },
     "headscale": {
       "version": "0.29.5",

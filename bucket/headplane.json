@@ -1,10 +1,10 @@
 {
-  "version": "0.8.1",
+  "version": "0.8.2",
   "description": "A frontend for headscale",
   "homepage": "https://github.com/tale/headplane",
   "license": "AGPL-3.0-only",
-  "url": "https://github.com/Anri2021/scoop-bucket/releases/download/headplane-v0.8.1/headplane-0.8.1-61ebcc474e57-windows-x64.zip",
-  "hash": "8a638f5615b6df46c84123a1e7f6de934cbb7c7bfe791d3947ebd2779cb59e56",
+  "url": "https://github.com/Anri2021/scoop-bucket/releases/download/headplane-v0.8.2/headplane-0.8.2-9508aa46e025-windows-x64.zip",
+  "hash": "9513533d97de6ee4538875015ace604a3776ad484489a417b180b6d6d96c28fe",
   "bin": "headplane.cmd",
   "depends": "nodejs",
   "persist": [

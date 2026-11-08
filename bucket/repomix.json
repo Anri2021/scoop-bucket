@@ -1,10 +1,10 @@
 {
-  "version": "1.18.1",
+  "version": "1.19.0",
   "description": "Pack repository contents into a single AI-friendly document",
   "homepage": "https://repomix.com",
   "license": "MIT",
-  "url": "https://github.com/Anri2021/scoop-bucket/releases/download/repomix-v1.18.1/repomix-1.18.1-1943efc26988-windows-x64.zip",
-  "hash": "a5fb4290450bb6b81d11ff695fc005d919392331bfc4d552566d62eb3b75d2c5",
+  "url": "https://github.com/Anri2021/scoop-bucket/releases/download/repomix-v1.19.0/repomix-1.19.0-1fa4a07ebe98-windows-x64.zip",
+  "hash": "8c4330e2e0ee7ad086ba22f6e23b30fc2feebbb08a6aa9892a32c54f5e842692",
   "bin": "repomix.cmd",
   "depends": "nodejs"
 }

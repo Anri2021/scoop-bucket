@@ -75,12 +75,12 @@
       "artifact": "ps-regex-fixer-1.1.0-b924ecaa007c-windows-x64.zip"
     },
     "repomix": {
-      "version": "1.18.1",
-      "tag": "v1.18.1",
+      "version": "1.19.0",
+      "tag": "v1.19.0",
       "mode": "cloud",
       "reason": "explicit:cloud",
-      "fingerprint": "1943efc26988258a01d454e30b7c96a0c266b426110b3b8e2b36f5c9b468ac2a",
-      "artifact": "repomix-1.18.1-1943efc26988-windows-x64.zip"
+      "fingerprint": "1fa4a07ebe9832cb15c136eafff65eaa66bd531730658617d2b6f5d82d3f40a0",
+      "artifact": "repomix-1.19.0-1fa4a07ebe98-windows-x64.zip"
     },
     "scapy": {
       "version": "2.8.0",

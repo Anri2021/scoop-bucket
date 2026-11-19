@@ -1,10 +1,10 @@
 {
-  "version": "1.4.4",
+  "version": "1.4.5",
   "description": "Incredibly fast JavaScript runtime and toolkit",
   "homepage": "https://bun.sh",
   "license": "MIT",
-  "url": "https://github.com/oven-sh/bun/releases/download/bun-v1.4.4/bun-windows-x64.zip",
-  "hash": "cd2c0fccc78f3ede1f50ca827a15f063eda13d4d150a3d0674f4f6e323d864a5",
+  "url": "https://github.com/oven-sh/bun/releases/download/bun-v1.4.5/bun-windows-x64.zip",
+  "hash": "815ab45ec7f549abf87e6869584b506eab088e24225683957b7e150b47d6de30",
   "extract_dir": "bun-windows-x64",
   "bin": "bun.exe"
 }
